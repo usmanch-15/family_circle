@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../utils/constants.dart';
-
+import '../providers/auth_provider.dart';
 import 'login_screen.dart';
-import 'home_screen.dart';
+import 'groups_list_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -38,7 +37,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
 
-    // 2.5 second baad check karo - login hai ya nahi
     Future.delayed(const Duration(milliseconds: 2500), () {
       _checkAuth();
     });
@@ -50,13 +48,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       data: (user) {
         if (!mounted) return;
         if (user != null) {
-          // Login hai - home screen pe jao
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            MaterialPageRoute(builder: (_) => const GroupsListScreen()),
           );
         } else {
-          // Login nahi - login screen pe jao
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -103,7 +99,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // App Icon
                     Container(
                       width: 100,
                       height: 100,
@@ -121,10 +116,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         color: Colors.white,
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // App Name
                     const Text(
                       'Family Circle',
                       style: TextStyle(
@@ -134,10 +126,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         letterSpacing: -0.5,
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
-                    // Tagline
                     Text(
                       AppStrings.tagline,
                       style: TextStyle(
@@ -152,10 +141,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
-
                     const SizedBox(height: 60),
-
-                    // Loading dots
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(3, (i) {
@@ -177,10 +163,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         );
                       }),
                     ),
-
                     const SizedBox(height: 40),
-
-                    // Bottom tagline
                     Text(
                       '❤️  ${AppStrings.splashSub}',
                       style: TextStyle(

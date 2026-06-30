@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../utils/constants.dart';
-import 'home_screen.dart';
+import '../providers/auth_provider.dart';
+import 'groups_list_screen.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -44,7 +44,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ref.read(currentUserProvider.notifier).state = user;
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const GroupsListScreen()),
               (route) => false,
         );
       }
