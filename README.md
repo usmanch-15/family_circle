@@ -1,4 +1,5 @@
 # family_circle
+<<<<<<< HEAD
 
 A new Flutter project.
 
@@ -15,3 +16,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+Family Circle – Your family's private space. Share photos, videos, and audio directly to the cloud without filling up your phone's storage. Admins can invite members using a secure invite link. If family disputes arise, the AI Mediator listens to both sides and provides a fair, unbiased resolution.
+>>>>>>> dc0ca060ccede808afa54a361351e37eb0447a4b
