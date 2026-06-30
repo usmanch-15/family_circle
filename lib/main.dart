@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'utils/constants.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase initialize
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // ⚠️ Firebase filhal disabled hai - flutterfire configure chalane ke baad
+  // yeh 2 lines wapis uncomment karo aur upar yeh imports add karo:
+  // import 'package:firebase_core/firebase_core.dart';
+  // import 'firebase_options.dart';
+  //
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
 
   runApp(
     const ProviderScope(

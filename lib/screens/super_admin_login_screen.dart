@@ -12,7 +12,7 @@ class SuperAdminLoginScreen extends StatefulWidget {
 
 class _SuperAdminLoginScreenState extends State<SuperAdminLoginScreen> {
   final _passCtrl = TextEditingController();
-  final _service = SuperAdminService();
+  final SuperAdminService _service = SuperAdminService();
   String? _error;
 
   void _verify() {

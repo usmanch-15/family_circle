@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
+import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'admin_screen.dart';
 

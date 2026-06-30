@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../utils/constants.dart';
-
-import '../providers/family_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/groups_provider.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final familyId = user?.familyId;
+    final familyId = ref.watch(currentGroupIdProvider);
 
     if (familyId == null) {
       return const Scaffold(body: Center(child: Text('Family nahi mili')));
     }
 
-    final familyAsync = ref.watch(familyStreamProvider(familyId));
+    final familyAsync = ref.watch(singleGroupStreamProvider(familyId));
 
     return Scaffold(
       backgroundColor: AppColors.background,

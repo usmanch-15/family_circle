@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
-
+import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import 'signup_screen.dart';
-import 'home_screen.dart';
+import 'groups_list_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -40,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ref.read(currentUserProvider.notifier).state = user;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const GroupsListScreen()),
         );
       }
     } catch (e) {
@@ -60,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ref.read(currentUserProvider.notifier).state = user;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const GroupsListScreen()),
         );
       }
     } catch (e) {

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import '../services/auth_service.dart';
 import '../utils/constants.dart';
-
+import '../providers/auth_provider.dart';
+import '../providers/groups_provider.dart';
 import '../providers/media_provider.dart';
 import '../models/media_model.dart';
+import '../services/camera_service.dart';
 import '../widgets/media_tile.dart';
 import '../widgets/loading_widget.dart';
 import 'media_viewer_screen.dart';
@@ -13,18 +13,18 @@ import 'media_viewer_screen.dart';
 class MediaScreen extends ConsumerWidget {
   const MediaScreen({super.key});
 
-  Future<void> _upload(BuildContext context, WidgetRef ref) async {
+  Future<void> _upload(BuildContext context, WidgetRef ref, String familyId) async {
     final user = ref.read(currentUserProvider);
-    if (user?.familyId == null) return;
+    if (user == null) return;
 
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
+    final file = await CameraService().pickPhotoFromGallery();
+    if (file == null) return;
 
     ref.read(mediaUploadingProvider.notifier).state = true;
     try {
       await ref.read(mediaServiceProvider).uploadMedia(
-        file: picked.path as dynamic,
-        familyId: user!.familyId!,
+        file: file,
+        familyId: familyId,
         uploaderUid: user.uid,
         uploaderName: user.name,
         type: MediaType.photo,
@@ -41,8 +41,7 @@ class MediaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final familyId = user?.familyId;
+    final familyId = ref.watch(currentGroupIdProvider);
     final isUploading = ref.watch(mediaUploadingProvider);
 
     if (familyId == null) {
@@ -58,12 +57,13 @@ class MediaScreen extends ConsumerWidget {
         elevation: 0,
         title: const Text('Memories',
             style: TextStyle(color: AppColors.textPrimary)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_a_photo_outlined,
                 color: AppColors.primary),
             onPressed:
-            isUploading ? null : () => _upload(context, ref),
+            isUploading ? null : () => _upload(context, ref, familyId),
           ),
         ],
       ),
