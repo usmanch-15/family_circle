@@ -7,6 +7,7 @@ class FamilyModel {
   final String inviteCode;
   final List<String> memberIds;
   final String? photoUrl;
+  final bool aiEnabled;
   final DateTime createdAt;
 
   FamilyModel({
@@ -16,6 +17,7 @@ class FamilyModel {
     required this.inviteCode,
     required this.memberIds,
     this.photoUrl,
+    this.aiEnabled = false,
     required this.createdAt,
   });
 
@@ -32,6 +34,7 @@ class FamilyModel {
       inviteCode: map['inviteCode'] ?? '',
       memberIds:  List<String>.from(map['memberIds'] ?? []),
       photoUrl:   map['photoUrl'],
+      aiEnabled:  map['aiEnabled'] ?? false,
       createdAt:  (map['createdAt'] as Timestamp).toDate(),
     );
   }
@@ -43,6 +46,7 @@ class FamilyModel {
       'inviteCode': inviteCode,
       'memberIds':  memberIds,
       'photoUrl':   photoUrl,
+      'aiEnabled':  aiEnabled,
       'createdAt':  Timestamp.fromDate(createdAt),
     };
   }
@@ -51,6 +55,7 @@ class FamilyModel {
     String? name,
     List<String>? memberIds,
     String? photoUrl,
+    bool? aiEnabled,
   }) {
     return FamilyModel(
       id:         id,
@@ -59,6 +64,7 @@ class FamilyModel {
       inviteCode: inviteCode,
       memberIds:  memberIds ?? this.memberIds,
       photoUrl:   photoUrl ?? this.photoUrl,
+      aiEnabled:  aiEnabled ?? this.aiEnabled,
       createdAt:  createdAt,
     );
   }
