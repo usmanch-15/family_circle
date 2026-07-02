@@ -16,104 +16,154 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.primary,
         elevation: 0,
-        title: const Text('Settings',
-            style: TextStyle(color: AppColors.textPrimary)),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
+          // ── Profile card ──────────────────────────────
           Container(
+            color: Colors.white,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.cardBg,
-                  backgroundImage:
-                  user?.photoUrl != null ? NetworkImage(user!.photoUrl!) : null,
-                  child: user?.photoUrl == null
-                      ? Text(Helpers.getInitials(user?.name ?? 'U'))
-                      : null,
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: AppColors.cardBg,
+                      backgroundImage: user?.photoUrl != null ? NetworkImage(user!.photoUrl!) : null,
+                      child: user?.photoUrl == null
+                          ? Text(Helpers.getInitials(user?.name ?? 'U'),
+                          style: const TextStyle(fontSize: 22, color: AppColors.primary, fontWeight: FontWeight.w700))
+                          : null,
+                    ),
+                    Positioned(
+                      right: 0, bottom: 0,
+                      child: Container(
+                        width: 20, height: 20,
+                        decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                        child: const Icon(Icons.edit, size: 10, color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user?.name ?? '',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
-                      Text(user?.email ?? '',
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.textMuted)),
+                      Text(user?.name ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      const SizedBox(height: 3),
+                      Text(user?.email ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.cardBg, borderRadius: BorderRadius.circular(20)),
+                        child: Text(
+                          user?.isAdmin == true ? 'Admin' : 'Member',
+                          style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                const Icon(Icons.chevron_right, color: AppColors.textMuted),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          const Text('App settings',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted)),
-          const SizedBox(height: 8),
-          _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Theme',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.lock_outline,
-            title: 'Privacy',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.help_outline,
-            title: 'Help & Support',
-            onTap: () {},
-          ),
-          const SizedBox(height: 20),
-          _SettingsTile(
-            icon: Icons.logout,
-            title: 'Logout',
-            color: AppColors.error,
-            onTap: () async {
-              await ref.read(authServiceProvider).logout();
-              ref.read(currentUserProvider.notifier).state = null;
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
+
+          const SizedBox(height: 12),
+
+          // ── Account section ───────────────────────────
+          _SectionTitle(title: 'Account'),
+          _SettingsTile(icon: Icons.person_outline, iconColor: AppColors.primary,
+              title: 'Profile', subtitle: 'Naam aur photo change karein', onTap: () {}),
+          _SettingsTile(icon: Icons.privacy_tip_outlined, iconColor: const Color(0xFF0F6E56),
+              title: 'Privacy', subtitle: 'Kaun dekh sakta hai aapko', onTap: () {}),
+          _SettingsTile(icon: Icons.security_outlined, iconColor: const Color(0xFF1D4ED8),
+              title: 'Security', subtitle: 'Password aur two-step', onTap: () {}),
+
+          const SizedBox(height: 12),
+
+          // ── Preferences section ───────────────────────
+          _SectionTitle(title: 'Preferences'),
+          _SettingsTile(icon: Icons.notifications_outlined, iconColor: const Color(0xFFD97706),
+              title: 'Notifications', subtitle: 'Messages, events aur alerts', onTap: () {}),
+          _SettingsTile(icon: Icons.dark_mode_outlined, iconColor: const Color(0xFF6C3AE8),
+              title: 'Theme', subtitle: 'Light ya dark mode', onTap: () {}),
+          _SettingsTile(icon: Icons.language_outlined, iconColor: const Color(0xFF0891B2),
+              title: 'Language', subtitle: 'Urdu, English, Punjabi', onTap: () {}),
+          _SettingsTile(icon: Icons.data_usage_outlined, iconColor: const Color(0xFF059669),
+              title: 'Storage & Data', subtitle: 'Media auto-download settings', onTap: () {}),
+
+          const SizedBox(height: 12),
+
+          // ── Support section ───────────────────────────
+          _SectionTitle(title: 'Help'),
+          _SettingsTile(icon: Icons.help_outline, iconColor: const Color(0xFF7C3AED),
+              title: 'Help & Support', subtitle: 'FAQ aur contact us', onTap: () {}),
+          _SettingsTile(icon: Icons.info_outline, iconColor: const Color(0xFF6B7280),
+              title: 'About', subtitle: 'Version, licenses', onTap: () {}),
+
+          const SizedBox(height: 12),
+
+          // ── Logout ────────────────────────────────────
+          Container(
+            color: Colors.white,
+            child: ListTile(
+              leading: Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.logout, color: AppColors.error, size: 20),
+              ),
+              title: const Text('Logout', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Logout'),
+                    content: const Text('Kya aap logout karna chahte hain?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Logout', style: TextStyle(color: AppColors.error)),
+                      ),
+                    ],
+                  ),
                 );
-              }
-            },
+                if (confirm == true) {
+                  await ref.read(authServiceProvider).logout();
+                  ref.read(currentUserProvider.notifier).state = null;
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                    );
+                  }
+                }
+              },
+            ),
           ),
-          const SizedBox(height: 40),
-          // Hidden super admin access - long press se khulta hai
+
+          const SizedBox(height: 32),
+
+          // Hidden super admin
           GestureDetector(
             onLongPress: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SuperAdminLoginScreen()),
             ),
-            child: const Center(
-              child: Text('Family Circle v1.0.0',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text('Family Circle v1.0.0',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ),
             ),
           ),
         ],
@@ -122,27 +172,45 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SettingsTile extends StatelessWidget {
-  final IconData icon;
+class _SectionTitle extends StatelessWidget {
   final String title;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _SettingsTile({
-    required this.icon,
-    required this.title,
-    this.color,
-    required this.onTap,
-  });
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: color ?? AppColors.textPrimary),
-      title: Text(title, style: TextStyle(color: color ?? AppColors.textPrimary)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-      onTap: onTap,
-      contentPadding: EdgeInsets.zero,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(title.toUpperCase(),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 0.8)),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _SettingsTile({required this.icon, required this.iconColor, required this.title,
+    required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+      ),
     );
   }
 }

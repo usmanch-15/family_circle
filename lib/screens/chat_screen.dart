@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
@@ -6,8 +5,8 @@ import '../utils/helpers.dart';
 import '../models/family_model.dart';
 import '../models/chat_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/groups_provider.dart';
 import '../services/chat_service.dart';
-import '../services/camera_service.dart';
 import '../widgets/loading_widget.dart';
 import 'members_screen.dart';
 import 'ai_mediator_screen.dart';
@@ -19,7 +18,6 @@ import 'media_screen.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
-
   const ChatScreen({super.key, required this.family});
 
   @override
@@ -27,13 +25,13 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  final _msgCtrl = TextEditingController();
-  final _scrollCtrl = ScrollController();
+  final _msgCtrl     = TextEditingController();
+  final _scrollCtrl  = ScrollController();
   final _chatService = ChatService();
-  final _cameraService = CameraService();
-  bool _sending = false;
-  bool _searching = false;
-  final _searchCtrl = TextEditingController();
+  final _searchCtrl  = TextEditingController();
+  bool _sending      = false;
+  bool _searching    = false;
+  bool _showAttach   = false;
   List<ChatModel> _searchResults = [];
 
   @override
@@ -47,13 +45,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _sendText() async {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
-
     final user = ref.read(currentUserProvider);
     if (user == null) return;
-
     _msgCtrl.clear();
-    setState(() => _sending = true);
-
+    setState(() { _sending = true; _showAttach = false; });
     try {
       await _chatService.sendTextMessage(
         familyId: widget.family.id,
@@ -67,43 +62,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _sendImage() async {
-    final user = ref.read(currentUserProvider);
-    if (user == null) return;
-
-    final file = await _cameraService.pickPhotoFromGallery();
-    if (file == null) return;
-
-    setState(() => _sending = true);
-    try {
-      await _chatService.sendImageMessage(
-        familyId: widget.family.id,
-        senderUid: user.uid,
-        senderName: user.name,
-        senderPhotoUrl: user.photoUrl,
-        imageFile: file,
-      );
-    } finally {
-      setState(() => _sending = false);
-    }
-  }
-
   Future<void> _runSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() => _searchResults = []);
-      return;
-    }
-    final results = await _chatService.searchMessages(
-      familyId: widget.family.id,
-      query: query.trim(),
-    );
+    if (query.trim().isEmpty) { setState(() => _searchResults = []); return; }
+    final results = await _chatService.searchMessages(familyId: widget.family.id, query: query.trim());
     setState(() => _searchResults = results);
   }
 
   Future<void> _toggleLike(ChatModel message) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
-
     await _chatService.toggleLike(
       familyId: widget.family.id,
       messageId: message.id,
@@ -113,38 +80,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openMenu(String value) {
+    setState(() => _showAttach = false);
     switch (value) {
-      case 'members':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const MembersScreen()));
-        break;
-      case 'media':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const MediaScreen()));
-        break;
-      case 'calendar':
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => CalendarScreen(familyId: widget.family.id)));
-        break;
-      case 'expense':
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => ExpenseScreen(family: widget.family)));
-        break;
-      case 'tasks':
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => TaskScreen(family: widget.family)));
-        break;
-      case 'admin':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AdminScreen()));
-        break;
+      case 'members':  Navigator.push(context, MaterialPageRoute(builder: (_) => const MembersScreen())); break;
+      case 'media':    Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaScreen())); break;
+      case 'calendar': Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(familyId: widget.family.id))); break;
+      case 'expense':  Navigator.push(context, MaterialPageRoute(builder: (_) => ExpenseScreen(family: widget.family))); break;
+      case 'tasks':    Navigator.push(context, MaterialPageRoute(builder: (_) => TaskScreen(family: widget.family))); break;
+      case 'admin':    Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())); break;
     }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
+    );
   }
 
   @override
@@ -152,19 +102,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFEDE8F5),
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
         titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: _searching
             ? TextField(
           controller: _searchCtrl,
           autofocus: true,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            hintText: 'Message search karein...',
-            hintStyle: TextStyle(color: Colors.white60),
+            hintText: 'Search...',
+            hintStyle: TextStyle(color: Colors.white54),
             border: InputBorder.none,
           ),
           onChanged: _runSearch,
@@ -173,29 +127,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onTap: () => _openMenu('members'),
           child: Row(
             children: [
-              const SizedBox(width: 4),
               CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white.withOpacity(0.2),
+                radius: 19,
+                backgroundColor: Colors.white.withOpacity(0.25),
                 child: Text(
                   Helpers.getInitials(widget.family.name),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(widget.family.name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                     Text('${widget.family.memberCount} members',
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 11)),
+                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
                   ],
                 ),
               ),
@@ -204,93 +153,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(_searching ? Icons.close : Icons.search,
-                color: Colors.white),
+            icon: Icon(_searching ? Icons.close : Icons.search, color: Colors.white),
             onPressed: () {
               setState(() {
                 _searching = !_searching;
-                if (!_searching) {
-                  _searchCtrl.clear();
-                  _searchResults = [];
-                }
+                if (!_searching) { _searchCtrl.clear(); _searchResults = []; }
               });
             },
           ),
-          if (widget.family.aiEnabled)
-            IconButton(
-              icon: const Icon(Icons.psychology_rounded, color: Colors.white),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AiMediatorScreen()),
-              ),
+          IconButton(
+            icon: Icon(
+              Icons.psychology_rounded,
+              color: widget.family.aiEnabled ? Colors.yellow.shade300 : Colors.white.withOpacity(0.45),
             ),
+            onPressed: () {
+              if (widget.family.aiEnabled) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AiMediatorScreen()));
+              } else {
+                _showSnack('AI Mediator is group mein off hai');
+              }
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onSelected: _openMenu,
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                  value: 'members',
-                  child: Row(children: [
-                    Icon(Icons.people_outline, size: 18),
-                    SizedBox(width: 10),
-                    Text('Members'),
-                  ])),
-              const PopupMenuItem(
-                  value: 'media',
-                  child: Row(children: [
-                    Icon(Icons.photo_library_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('Media'),
-                  ])),
-              const PopupMenuItem(
-                  value: 'calendar',
-                  child: Row(children: [
-                    Icon(Icons.calendar_today_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('Calendar'),
-                  ])),
-              const PopupMenuItem(
-                  value: 'expense',
-                  child: Row(children: [
-                    Icon(Icons.receipt_long_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('Expenses'),
-                  ])),
-              const PopupMenuItem(
-                  value: 'tasks',
-                  child: Row(children: [
-                    Icon(Icons.checklist_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('Tasks'),
-                  ])),
+              _mi('members', Icons.people_outline,                'Members'),
+              _mi('media',   Icons.photo_library_outlined,        'Media'),
+              _mi('calendar',Icons.calendar_today_outlined,       'Calendar'),
+              _mi('expense', Icons.receipt_long_outlined,         'Expenses'),
+              _mi('tasks',   Icons.checklist_outlined,            'Tasks'),
               if (widget.family.isAdmin(user?.uid ?? ''))
-                const PopupMenuItem(
-                    value: 'admin',
-                    child: Row(children: [
-                      Icon(Icons.admin_panel_settings_outlined, size: 18),
-                      SizedBox(width: 10),
-                      Text('Admin panel'),
-                    ])),
+                _mi('admin', Icons.admin_panel_settings_outlined, 'Admin panel'),
             ],
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _searching && _searchCtrl.text.isNotEmpty
-                ? _buildSearchResults(user?.uid ?? '')
-                : _buildChatStream(user?.uid ?? ''),
-          ),
-          if (!_searching)
-            _MessageInputBar(
-              controller: _msgCtrl,
-              onSend: _sendText,
-              onImage: _sendImage,
-              sending: _sending,
+      body: GestureDetector(
+        onTap: () { if (_showAttach) setState(() => _showAttach = false); },
+        child: Column(
+          children: [
+            // Chat messages
+            Expanded(
+              child: _searching && _searchCtrl.text.isNotEmpty
+                  ? _buildSearchResults(user?.uid ?? '')
+                  : _buildChatStream(user?.uid ?? ''),
             ),
-        ],
+
+            // Attachment panel
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              height: _showAttach ? 160 : 0,
+              color: Colors.white,
+              child: _showAttach
+                  ? _AttachPanel(
+                onGallery:  () => _showSnack('Gallery: Android app mein available'),
+                onCamera:   () => _showSnack('Camera: Android app mein available'),
+                onDocument: () => _showSnack('Document: Android app mein available'),
+                onLocation: () => _showSnack('Location: Android app mein available'),
+                onAudio:    () => _showSnack('Audio: Android app mein available'),
+                onContact:  () => _showSnack('Contact: Android app mein available'),
+              )
+                  : null,
+            ),
+
+            // Input bar
+            _InputBar(
+              controller: _msgCtrl,
+              onSend:      _sendText,
+              onAttach:    () => setState(() => _showAttach = !_showAttach),
+              sending:     _sending,
+              showAttach:  _showAttach,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  PopupMenuItem<String> _mi(String value, IconData icon, String label) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(children: [Icon(icon, size: 18, color: AppColors.textPrimary), const SizedBox(width: 10), Text(label)]),
     );
   }
 
@@ -300,27 +246,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const LoadingWidget();
         final messages = snapshot.data!;
-
         if (messages.isEmpty) {
-          return const Center(
-            child: Text('Yahan se chat shuru karein',
-                style: TextStyle(color: AppColors.textMuted)),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.6), shape: BoxShape.circle),
+                  child: Icon(Icons.chat_bubble_outline, size: 42, color: AppColors.primary.withOpacity(0.4)),
+                ),
+                const SizedBox(height: 14),
+                const Text('Pehla message bhejein!', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+              ],
+            ),
           );
         }
-
         return ListView.builder(
           controller: _scrollCtrl,
           reverse: true,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           itemCount: messages.length,
-          itemBuilder: (context, i) {
-            final msg = messages[i];
-            return _ChatMessageBubble(
-              message: msg,
-              isMe: msg.senderUid == currentUid,
-              onLike: () => _toggleLike(msg),
-            );
-          },
+          itemBuilder: (context, i) => _ChatBubble(
+            message: messages[i],
+            isMe: messages[i].senderUid == currentUid,
+            onLike: () => _toggleLike(messages[i]),
+          ),
         );
       },
     );
@@ -328,186 +279,260 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildSearchResults(String currentUid) {
     if (_searchResults.isEmpty) {
-      return const Center(
-        child: Text('Koi message nahi mila',
-            style: TextStyle(color: AppColors.textMuted)),
-      );
+      return const Center(child: Text('Koi message nahi mila', style: TextStyle(color: AppColors.textMuted)));
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       itemCount: _searchResults.length,
-      itemBuilder: (context, i) {
-        final msg = _searchResults[i];
-        return _ChatMessageBubble(
-          message: msg,
-          isMe: msg.senderUid == currentUid,
-          onLike: () => _toggleLike(msg),
-        );
-      },
+      itemBuilder: (context, i) => _ChatBubble(
+        message: _searchResults[i],
+        isMe: _searchResults[i].senderUid == currentUid,
+        onLike: () => _toggleLike(_searchResults[i]),
+      ),
     );
   }
 }
 
-class _ChatMessageBubble extends StatelessWidget {
-  final ChatModel message;
-  final bool isMe;
-  final VoidCallback onLike;
-
-  const _ChatMessageBubble({
-    required this.message,
-    required this.isMe,
-    required this.onLike,
-  });
+// ─── Attachment Panel ─────────────────────────────────────
+class _AttachPanel extends StatelessWidget {
+  final VoidCallback onGallery, onCamera, onDocument, onLocation, onAudio, onContact;
+  const _AttachPanel({required this.onGallery, required this.onCamera, required this.onDocument,
+    required this.onLocation, required this.onAudio, required this.onContact});
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: onLike,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.all(10),
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75),
-          decoration: BoxDecoration(
-            color: isMe ? AppColors.primary : AppColors.surface,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(14),
-              topRight: const Radius.circular(14),
-              bottomLeft: Radius.circular(isMe ? 14 : 3),
-              bottomRight: Radius.circular(isMe ? 3 : 14),
-            ),
-            border: isMe ? null : Border.all(color: AppColors.border),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _AttachItem(icon: Icons.photo_library_rounded,  label: 'Gallery',   color: const Color(0xFF8B5CF6), onTap: onGallery),
+          _AttachItem(icon: Icons.camera_alt_rounded,     label: 'Camera',    color: const Color(0xFF06B6D4), onTap: onCamera),
+          _AttachItem(icon: Icons.insert_drive_file,      label: 'Document',  color: const Color(0xFF3B82F6), onTap: onDocument),
+          _AttachItem(icon: Icons.location_on_rounded,    label: 'Location',  color: const Color(0xFF10B981), onTap: onLocation),
+          _AttachItem(icon: Icons.headphones_rounded,     label: 'Audio',     color: const Color(0xFFF59E0B), onTap: onAudio),
+          _AttachItem(icon: Icons.person_rounded,         label: 'Contact',   color: const Color(0xFFEF4444), onTap: onContact),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttachItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _AttachItem({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 26),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isMe)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(message.senderName,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary)),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.9), fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Input Bar ────────────────────────────────────────────
+class _InputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend, onAttach;
+  final bool sending, showAttach;
+  const _InputBar({required this.controller, required this.onSend, required this.onAttach,
+    required this.sending, required this.showAttach});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // + attach button
+            GestureDetector(
+              onTap: onAttach,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: showAttach ? AppColors.primary : AppColors.cardBg,
+                  shape: BoxShape.circle,
                 ),
-              if (message.type == ChatMessageType.image &&
-                  message.mediaUrl != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(message.mediaUrl!,
-                      width: 200, fit: BoxFit.cover),
+                child: Icon(
+                  showAttach ? Icons.close : Icons.add,
+                  color: showAttach ? Colors.white : AppColors.primary,
+                  size: 20,
                 ),
-              if (message.type == ChatMessageType.voice)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.play_circle_fill,
-                        color: isMe ? Colors.white : AppColors.primary,
-                        size: 28),
-                    const SizedBox(width: 8),
-                    Text('${message.voiceDurationSeconds ?? 0}s',
-                        style: TextStyle(
-                            color: isMe ? Colors.white : AppColors.textPrimary)),
-                  ],
-                ),
-              if (message.type == ChatMessageType.text)
-                Text(message.text ?? '',
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: isMe ? Colors.white : AppColors.textPrimary)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(Helpers.formatTime(message.sentAt),
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: isMe
-                              ? Colors.white.withOpacity(0.7)
-                              : AppColors.textMuted)),
-                  if (message.likeCount > 0) ...[
-                    const SizedBox(width: 6),
-                    const Icon(Icons.favorite, size: 11, color: Colors.red),
-                    const SizedBox(width: 2),
-                    Text('${message.likeCount}',
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: isMe
-                                ? Colors.white.withOpacity(0.7)
-                                : AppColors.textMuted)),
-                  ],
-                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+
+            // Text field
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 120),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        maxLines: null,
+                        decoration: const InputDecoration(
+                          hintText: 'Message likhein...',
+                          hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          border: InputBorder.none,
+                        ),
+                        onSubmitted: (_) => onSend(),
+                      ),
+                    ),
+                    // Camera inside input
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Camera: Android mein available'), behavior: SnackBarBehavior.floating),
+                        ),
+                        child: const Icon(Icons.camera_alt_outlined, color: AppColors.textMuted, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Send button
+            GestureDetector(
+              onTap: sending ? null : onSend,
+              child: Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  color: sending ? AppColors.textMuted : AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: sending
+                    ? const Padding(padding: EdgeInsets.all(10),
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _MessageInputBar extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final VoidCallback onImage;
-  final bool sending;
-
-  const _MessageInputBar({
-    required this.controller,
-    required this.onSend,
-    required this.onImage,
-    required this.sending,
-  });
+// ─── Chat Bubble ──────────────────────────────────────────
+class _ChatBubble extends StatelessWidget {
+  final ChatModel message;
+  final bool isMe;
+  final VoidCallback onLike;
+  const _ChatBubble({required this.message, required this.isMe, required this.onLike});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.image_outlined, color: AppColors.textMuted),
-              onPressed: onImage,
-            ),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: 'Message likhein...',
-                  filled: true,
-                  fillColor: AppColors.background,
-                  contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(
+          onLongPress: onLike,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isMe) ...[
+                CircleAvatar(
+                  radius: 13,
+                  backgroundColor: AppColors.cardBg,
+                  child: Text(
+                    message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w700),
                   ),
                 ),
-                onSubmitted: (_) => onSend(),
+                const SizedBox(width: 5),
+              ],
+              Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.70),
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isMe ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft:     const Radius.circular(16),
+                    topRight:    const Radius.circular(16),
+                    bottomLeft:  Radius.circular(isMe ? 16 : 3),
+                    bottomRight: Radius.circular(isMe ? 3 : 16),
+                  ),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 4, offset: const Offset(0, 1))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Text(message.senderName,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      ),
+                    if (message.type == ChatMessageType.image && message.mediaUrl != null)
+                      ClipRRect(borderRadius: BorderRadius.circular(10),
+                          child: Image.network(message.mediaUrl!, width: 200, fit: BoxFit.cover)),
+                    if (message.type == ChatMessageType.voice)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.play_circle_fill, color: isMe ? Colors.white : AppColors.primary, size: 28),
+                        const SizedBox(width: 8),
+                        Text('${message.voiceDurationSeconds ?? 0}s',
+                            style: TextStyle(color: isMe ? Colors.white : AppColors.textPrimary)),
+                      ]),
+                    if (message.type == ChatMessageType.text)
+                      Text(message.text ?? '',
+                          style: TextStyle(fontSize: 14, color: isMe ? Colors.white : AppColors.textPrimary, height: 1.3)),
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(Helpers.formatTime(message.sentAt),
+                            style: TextStyle(fontSize: 10, color: isMe ? Colors.white.withOpacity(0.65) : AppColors.textMuted)),
+                        if (isMe) ...[
+                          const SizedBox(width: 4),
+                          Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.65)),
+                        ],
+                        if (message.likeCount > 0) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.favorite, size: 11, color: Colors.red),
+                          const SizedBox(width: 2),
+                          Text('${message.likeCount}',
+                              style: TextStyle(fontSize: 10, color: isMe ? Colors.white.withOpacity(0.65) : AppColors.textMuted)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: AppColors.primary,
-              child: sending
-                  ? const Padding(
-                padding: EdgeInsets.all(8),
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2),
-              )
-                  : IconButton(
-                icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                onPressed: onSend,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
