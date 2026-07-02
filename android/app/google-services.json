@@ -1,0 +1,83 @@
+{
+  "project_info": {
+    "project_number": "529646124371",
+    "firebase_url": "https://family-circle-a81cf-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "family-circle-a81cf",
+    "storage_bucket": "family-circle-a81cf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:529646124371:android:e63900e86b36c81f2fb5a6",
+        "android_client_info": {
+          "package_name": "com.example.family_circle"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "529646124371-lqrdo77bek690hlmbj6ui38uo1sgqqnr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDxiiHnDUEXYpJUNCbhc2pbKBEYPwlIsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "529646124371-lqrdo77bek690hlmbj6ui38uo1sgqqnr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "529646124371-brl1jg1d1qjmsogs868l3opaa6gdig2t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.familyCircle"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:529646124371:android:0daefc53037bd34a2fb5a6",
+        "android_client_info": {
+          "package_name": "com.familycircle.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "529646124371-lqrdo77bek690hlmbj6ui38uo1sgqqnr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDxiiHnDUEXYpJUNCbhc2pbKBEYPwlIsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "529646124371-lqrdo77bek690hlmbj6ui38uo1sgqqnr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "529646124371-brl1jg1d1qjmsogs868l3opaa6gdig2t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.familyCircle"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

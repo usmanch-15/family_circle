@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
-import '../providers/auth_provider.dart';
 import 'login_screen.dart';
-import 'groups_list_screen.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen>
+class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
@@ -37,36 +34,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
 
+    // 2.5 second baad seedha login screen
     Future.delayed(const Duration(milliseconds: 2500), () {
-      _checkAuth();
-    });
-  }
-
-  void _checkAuth() {
-    final authState = ref.read(authStateProvider);
-    authState.when(
-      data: (user) {
-        if (!mounted) return;
-        if (user != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const GroupsListScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      },
-      loading: () {},
-      error: (_, __) {
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
-      },
-    );
+      }
+    });
   }
 
   @override
@@ -148,12 +124,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         return AnimatedBuilder(
                           animation: _controller,
                           builder: (_, __) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            margin:
+                            const EdgeInsets.symmetric(horizontal: 4),
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(
-                                i == (_controller.value * 3).floor() % 3
+                                i ==
+                                    (_controller.value * 3)
+                                        .floor() %
+                                        3
                                     ? 1.0
                                     : 0.4,
                               ),

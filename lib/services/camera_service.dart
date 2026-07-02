@@ -1,43 +1,48 @@
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 class CameraService {
-  final _picker = ImagePicker();
+  // Web pe yeh sab kaam nahi karta - mobile only
+  // Jab Android pe move karein ge tab image_picker wapis add karein ge
 
-  // Camera se photo khinchna
   Future<File?> takePhoto() async {
-    final picked = await _picker.pickImage(source: ImageSource.camera);
-    if (picked == null) return null;
-    return File(picked.path);
+    if (kIsWeb) {
+      debugPrint('Camera web pe support nahi - mobile pe chalao');
+      return null;
+    }
+    return null;
   }
 
-  // Camera se video banana
   Future<File?> recordVideo() async {
-    final picked = await _picker.pickVideo(
-      source: ImageSource.camera,
-      maxDuration: const Duration(minutes: 5),
-    );
-    if (picked == null) return null;
-    return File(picked.path);
+    if (kIsWeb) {
+      debugPrint('Video web pe support nahi - mobile pe chalao');
+      return null;
+    }
+    return null;
   }
 
-  // Gallery se photo choose karna
   Future<File?> pickPhotoFromGallery() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked == null) return null;
-    return File(picked.path);
+    if (kIsWeb) {
+      debugPrint('Gallery web pe support nahi - mobile pe chalao');
+      return null;
+    }
+    return null;
   }
 
-  // Gallery se video choose karna
   Future<File?> pickVideoFromGallery() async {
-    final picked = await _picker.pickVideo(source: ImageSource.gallery);
-    if (picked == null) return null;
-    return File(picked.path);
+    if (kIsWeb) {
+      debugPrint('Gallery web pe support nahi - mobile pe chalao');
+      return null;
+    }
+    return null;
   }
 
-  // Multiple photos ek sath select karna
   Future<List<File>> pickMultiplePhotos() async {
-    final picked = await _picker.pickMultiImage();
-    return picked.map((x) => File(x.path)).toList();
+    if (kIsWeb) {
+      debugPrint('Multi pick web pe support nahi - mobile pe chalao');
+      return [];
+    }
+    return [];
   }
 }
