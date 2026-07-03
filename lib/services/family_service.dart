@@ -6,11 +6,13 @@ import '../utils/helpers.dart';
 class FamilyService {
   final _firestore = FirebaseFirestore.instance;
 
+  // ─── Naya family group banana ─────────────────────────
   Future<FamilyModel> createFamily({
     required String name,
     required String adminUid,
   }) async {
     final inviteCode = Helpers.generateInviteCode(name);
+
     final docRef = _firestore.collection(Collections.families).doc();
 
     final family = FamilyModel(
@@ -24,6 +26,7 @@ class FamilyService {
 
     await docRef.set(family.toMap());
 
+    // User ke document mein familyId update karo
     await _firestore.collection(Collections.users).doc(adminUid).update({
       'familyId': docRef.id,
       'role': 'admin',
@@ -32,6 +35,7 @@ class FamilyService {
     return family;
   }
 
+  // ─── Invite code se family join karna ─────────────────
   Future<FamilyModel?> joinFamily({
     required String inviteCode,
     required String userUid,
@@ -53,10 +57,12 @@ class FamilyService {
       throw 'Aap pehle se is family ke member hain.';
     }
 
+    // Member list mein add karo
     await _firestore.collection(Collections.families).doc(doc.id).update({
       'memberIds': FieldValue.arrayUnion([userUid]),
     });
 
+    // User ke document mein familyId update karo
     await _firestore.collection(Collections.users).doc(userUid).update({
       'familyId': doc.id,
       'role': 'member',
@@ -67,6 +73,7 @@ class FamilyService {
     );
   }
 
+  // ─── Family ka real-time data stream ──────────────────
   Stream<FamilyModel?> familyStream(String familyId) {
     return _firestore
         .collection(Collections.families)
@@ -78,6 +85,7 @@ class FamilyService {
     });
   }
 
+  // ─── Member remove karna (sirf admin) ─────────────────
   Future<void> removeMember({
     required String familyId,
     required String memberUid,
@@ -91,6 +99,7 @@ class FamilyService {
     });
   }
 
+  // ─── Invite code reset karna (sirf admin) ─────────────
   Future<String> resetInviteCode({
     required String familyId,
     required String familyName,
@@ -100,5 +109,15 @@ class FamilyService {
       'inviteCode': newCode,
     });
     return newCode;
+  }
+
+  // ─── AI enabled update karna (admin panel se) ─────────
+  Future<void> updateAiEnabled({
+    required String familyId,
+    required bool enabled,
+  }) async {
+    await _firestore.collection(Collections.families).doc(familyId).update({
+      'aiEnabled': enabled,
+    });
   }
 }
