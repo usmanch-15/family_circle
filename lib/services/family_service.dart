@@ -26,9 +26,9 @@ class FamilyService {
 
     await docRef.set(family.toMap());
 
-    // User ke document mein familyId update karo
+    // User ke document mein familyIds list update karo (UserModel isi field ko padhta hai)
     await _firestore.collection(Collections.users).doc(adminUid).update({
-      'familyId': docRef.id,
+      'familyIds': FieldValue.arrayUnion([docRef.id]),
       'role': 'admin',
     });
 
@@ -62,9 +62,9 @@ class FamilyService {
       'memberIds': FieldValue.arrayUnion([userUid]),
     });
 
-    // User ke document mein familyId update karo
+    // User ke document mein familyIds list update karo (UserModel isi field ko padhta hai)
     await _firestore.collection(Collections.users).doc(userUid).update({
-      'familyId': doc.id,
+      'familyIds': FieldValue.arrayUnion([doc.id]),
       'role': 'member',
     });
 
@@ -95,7 +95,7 @@ class FamilyService {
     });
 
     await _firestore.collection(Collections.users).doc(memberUid).update({
-      'familyId': null,
+      'familyIds': FieldValue.arrayRemove([familyId]),
     });
   }
 

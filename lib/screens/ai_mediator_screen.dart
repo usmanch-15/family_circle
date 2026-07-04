@@ -5,11 +5,11 @@ import '../utils/helpers.dart';
 import '../services/ai_service.dart';
 import '../providers/auth_provider.dart';
 
-enum _MediatorState { selectTopic, partyA, partyAMore, partyB, partyBMore, thinking, decision }
+enum _MediatorState { chooseParty, partyA, partyAMore, partyB, partyBMore, thinking, decision }
 
 class _Message {
   final String text;
-  final String sender; // 'ai', 'partyA', 'partyB'
+  final String sender;
   final DateTime time;
   _Message({required this.text, required this.sender}) : time = DateTime.now();
 }
@@ -22,23 +22,24 @@ class AiMediatorScreen extends ConsumerStatefulWidget {
 }
 
 class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
-  final _inputCtrl   = TextEditingController();
-  final _scrollCtrl  = ScrollController();
-  final _aiService   = AiService();
+  final _inputCtrl  = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final _aiService  = AiService();
 
-  _MediatorState _state = _MediatorState.selectTopic;
+  _MediatorState _state = _MediatorState.chooseParty;
   final List<_Message> _messages = [];
-  String _topic     = '';
+  String _topic      = '';
+  String _partyAName = 'Party A';
+  String _partyBName = 'Party B';
   String _partyASide = '';
   String _partyBSide = '';
-  bool _loading      = false;
+  bool   _loading    = false;
+  String _currentParty = 'partyA';
 
   @override
   void initState() {
     super.initState();
-    // First AI message
-    _addAiMsg('Assalam o Alaikum! Main Family Circle ka AI Mediator hun.\n\nPehle mujhe batayein — kya masla hai? Topic likhein (maslan: ghar ka kharcha, bacho ki parhai, property)');
-    _state = _MediatorState.selectTopic;
+    _addAiMsg('Assalam o Alaikum! Main Family Circle ka AI Mediator hun.\n\n⚖️ Main dono parties ki baat sunne ke baad fair faisla dunga.\n\nPehle batayein:\n• Party A ka naam kya hai?\n• Party B ka naam kya hai?\n• Kya masla hai (topic)?\n\nFormat: "Ali, Ahmed, ghar ka kharcha"');
   }
 
   @override
@@ -53,7 +54,7 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
     _scrollToBottom();
   }
 
-  void _addPartyMsg(String text, String party) {
+  void _addMsg(String text, String party) {
     setState(() => _messages.add(_Message(text: text, sender: party)));
     _scrollToBottom();
   }
@@ -76,103 +77,167 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
     _inputCtrl.clear();
 
     switch (_state) {
-    // ─── Topic select ──────────────────────────────
-      case _MediatorState.selectTopic:
-        _topic = text;
-        _addPartyMsg(text, 'partyA');
-        await Future.delayed(const Duration(milliseconds: 600));
-        _addAiMsg('Theek hai. Topic: "$_topic"\n\nAb Party A — aap pehle apni baat rakho. Jo bhi masla hai, poori baat likhein. Koi rok tok nahi, khul ke likhein.');
-        setState(() => _state = _MediatorState.partyA);
+
+    // ─── Step 0: Names + Topic ─────────────────────
+      case _MediatorState.chooseParty:
+        _addMsg(text, 'partyA');
+        final parts = text.split(',');
+        if (parts.length >= 3) {
+          _partyAName = parts[0].trim();
+          _partyBName = parts[1].trim();
+          _topic      = parts.sublist(2).join(',').trim();
+        } else if (parts.length == 2) {
+          _partyAName = parts[0].trim();
+          _topic      = parts[1].trim();
+        } else {
+          _topic = text;
+        }
+        await Future.delayed(const Duration(milliseconds: 500));
+        _addAiMsg('Theek hai!\n\n📋 Topic: "$_topic"\n👤 Party A: $_partyAName\n👥 Party B: $_partyBName\n\n---\n\n$_partyAName, aap pehle apni baat rakho. Jo bhi masla hai poori baat likhein — koi rok tok nahi.');
+        setState(() { _state = _MediatorState.partyA; _currentParty = 'partyA'; });
         break;
 
-    // ─── Party A pehli baar ────────────────────────
+    // ─── Step 1: Party A baat kare ─────────────────
       case _MediatorState.partyA:
         _partyASide = text;
-        _addPartyMsg(text, 'partyA');
-        await Future.delayed(const Duration(milliseconds: 600));
-        _addAiMsg('Shukriya Party A. Maine aapki baat sun li.\n\nKya aur kuch kehna chahte hain? Ya Party B ko apni baat rakhne dein?');
+        _addMsg(text, 'partyA');
+        await Future.delayed(const Duration(milliseconds: 500));
+        _addAiMsg('Shukriya $_partyAName. Maine aapki baat note kar li.\n\nKya aur kuch kehna chahte hain? Agar haan to likhein, agar nahi to "nahi" likhein.');
         setState(() => _state = _MediatorState.partyAMore);
         break;
 
-    // ─── Party A aur kuch kehna ────────────────────
+    // ─── Step 2: Party A aur kuch? ─────────────────
       case _MediatorState.partyAMore:
-        if (text.toLowerCase() == 'nahi' || text.toLowerCase() == 'no' || text.toLowerCase() == 'nai' || text.length < 5) {
-          _addPartyMsg(text, 'partyA');
-          await Future.delayed(const Duration(milliseconds: 600));
-          _addAiMsg('Theek hai.\n\nAb Party B — aap apni baat rakho. Jo bhi aapke dil mein hai, bata dein. Bilkul seedha likhein.');
-          setState(() => _state = _MediatorState.partyB);
+        if (_isNo(text)) {
+          _addMsg(text, 'partyA');
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Ab Party B ki turn — PHONE DOOSRE KO DO
+          _showHandoffDialog(_partyBName, () {
+            _addAiMsg('$_partyBName, ab aapki baat sunne ka waqt hai.\n\nJo bhi aapke dil mein hai, khul ke likhein. Koi judgment nahi hoga.');
+            setState(() { _state = _MediatorState.partyB; _currentParty = 'partyB'; });
+          });
         } else {
           _partyASide += '\n$text';
-          _addPartyMsg(text, 'partyA');
-          await Future.delayed(const Duration(milliseconds: 600));
-          _addAiMsg('Samajh gaya. Koi aur baat?\n(Agar nahi to "nahi" likhein taake Party B apni baat kare)');
+          _addMsg(text, 'partyA');
+          await Future.delayed(const Duration(milliseconds: 500));
+          _addAiMsg('Samajh gaya. Aur kuch? ("nahi" likhein agar complete ho gayi baat)');
         }
         break;
 
-    // ─── Party B pehli baar ────────────────────────
+    // ─── Step 3: Party B baat kare ─────────────────
       case _MediatorState.partyB:
         _partyBSide = text;
-        _addPartyMsg(text, 'partyB');
-        await Future.delayed(const Duration(milliseconds: 600));
-        _addAiMsg('Shukriya Party B. Maine aapki baat bhi sun li.\n\nKya aur kuch kehna chahte hain? Ya ab AI se decision lein?');
+        _addMsg(text, 'partyB');
+        await Future.delayed(const Duration(milliseconds: 500));
+        _addAiMsg('Shukriya $_partyBName. Maine aapki baat bhi note kar li.\n\nKya aur kuch kehna chahte hain?');
         setState(() => _state = _MediatorState.partyBMore);
         break;
 
-    // ─── Party B aur kuch kehna ────────────────────
+    // ─── Step 4: Party B aur kuch? ─────────────────
       case _MediatorState.partyBMore:
-        if (text.toLowerCase() == 'nahi' || text.toLowerCase() == 'no' || text.toLowerCase() == 'nai' || text.length < 5) {
-          _addPartyMsg(text, 'partyB');
-          await Future.delayed(const Duration(milliseconds: 600));
-          _addAiMsg('Theek hai. Dono parties ki baatein sun li hain.\n\nKya dono tayyar hain AI ka fair faisla sunne ke liye?\n\n"haan" likhein to main decision dunga.');
-          setState(() => _state = _MediatorState.thinking);
+        if (_isNo(text)) {
+          _addMsg(text, 'partyB');
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Dono complete — phone wapis pehle wale ko ya kisi bhi ko
+          _showHandoffDialog('Dono Parties', () {
+            _addAiMsg('Dono parties ki baatein mukammal ho gayi hain.\n\n✅ $_partyAName ki baat: noted\n✅ $_partyBName ki baat: noted\n\nKya dono AI ka fair faisla sunne ke liye tayyar hain? "haan" likhein.');
+            setState(() { _state = _MediatorState.thinking; _currentParty = 'partyA'; });
+          });
         } else {
           _partyBSide += '\n$text';
-          _addPartyMsg(text, 'partyB');
-          await Future.delayed(const Duration(milliseconds: 600));
-          _addAiMsg('Samajh gaya. Koi aur baat?\n(Agar nahi to "nahi" likhein)');
+          _addMsg(text, 'partyB');
+          await Future.delayed(const Duration(milliseconds: 500));
+          _addAiMsg('Samajh gaya. Aur kuch? ("nahi" likhein)');
         }
         break;
 
-    // ─── Decision lena ─────────────────────────────
+    // ─── Step 5: Final decision ─────────────────────
       case _MediatorState.thinking:
-        _addPartyMsg(text, 'partyA');
-        if (text.toLowerCase().contains('haan') || text.toLowerCase().contains('han') || text.toLowerCase().contains('yes') || text.toLowerCase() == 'ha') {
+        _addMsg(text, 'partyA');
+        if (text.toLowerCase().contains('haan') || text.toLowerCase().contains('han') ||
+            text.toLowerCase() == 'ha' || text.toLowerCase() == 'yes') {
           await Future.delayed(const Duration(milliseconds: 400));
-          _addAiMsg('Theek hai, main dono parties ki baatein analyse kar raha hun...');
+          _addAiMsg('Theek hai, main dono baatein analyse kar raha hun...');
           setState(() => _loading = true);
           await _getDecision();
         } else {
-          _addAiMsg('Koi baat nahi. Jab tayyar hon to "haan" likhein.');
+          _addAiMsg('Koi baat nahi. Jab dono tayyar hon to "haan" likhein.');
         }
         break;
 
-    // ─── Decision ho gaya ──────────────────────────
+    // ─── After decision ─────────────────────────────
       case _MediatorState.decision:
-        _addPartyMsg(text, 'partyA');
+        _addMsg(text, 'partyA');
         await Future.delayed(const Duration(milliseconds: 400));
-        _addAiMsg('Agar koi aur masla ho to naya session shuru karein — upar "Reset" button dabayein.');
+        _addAiMsg('Agar koi sawaal ho to pooch sakte hain. Naya masla ho to "Reset" button dabayein.');
         break;
 
-      default:
-        break;
+      default: break;
     }
+  }
+
+  bool _isNo(String text) {
+    final t = text.toLowerCase().trim();
+    return t == 'nahi' || t == 'nai' || t == 'no' || t == 'n' || t == 'na' || t.length < 4;
+  }
+
+  // ── Phone handoff dialog ────────────────────────────────
+  void _showHandoffDialog(String name, VoidCallback onContinue) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(color: AppColors.cardBg, borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.phone_android, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('Phone $name ko dein',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Ab $name ki baari hai. Phone unhe de dein taake woh apni baat likh sakein.',
+          style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onContinue();
+            },
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('Theek hai, ready hun'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _getDecision() async {
     try {
       final decision = await _aiService.getMediation(
-        topic:             _topic,
-        partyAStatement:   _partyASide,
-        partyBStatement:   _partyBSide,
+        topic:           _topic,
+        partyAStatement: '$_partyAName ki baat: $_partyASide',
+        partyBStatement: '$_partyBName ki baat: $_partyBSide',
       );
-      setState(() {
-        _loading = false;
-        _state   = _MediatorState.decision;
-      });
-      _addAiMsg('⚖️ AI ka Fair Faisla:\n\n$decision\n\n─────────────────\nYeh faisla dono parties ki baatein sun kar diya gaya hai. AI ne kisi ka paksh nahi liya.');
+      setState(() { _loading = false; _state = _MediatorState.decision; });
+      _addAiMsg('⚖️ AI ka Fair Faisla\nTopic: $_topic\n\n$decision\n\n─────────────────\nYeh faisla dono parties — $_partyAName aur $_partyBName — ki baatein sun kar diya gaya hai. AI ne kisi ka paksh nahi liya.');
     } catch (e) {
       setState(() => _loading = false);
-      _addAiMsg('Maafi chahta hun, koi masla hua. Dobara "haan" likhein.');
+      _addAiMsg('Maafi chahta hun, Claude API se rabta nahi ho saka. .env file mein CLAUDE_API_KEY check karein aur dobara "haan" likhein.');
     }
   }
 
@@ -180,9 +245,9 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Naya Session'),
-        content: const Text('Kya aap naya mediation session shuru karna chahte hain? Purani chat delete ho jayegi.'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Naya Session'),
+        content: const Text('Kya aap naya mediation session shuru karna chahte hain?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
@@ -190,14 +255,15 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
               Navigator.pop(ctx);
               setState(() {
                 _messages.clear();
-                _topic      = '';
-                _partyASide = '';
-                _partyBSide = '';
-                _state      = _MediatorState.selectTopic;
+                _topic = _partyAName = _partyBName = _partyASide = _partyBSide = '';
+                _partyAName = 'Party A';
+                _partyBName = 'Party B';
+                _state = _MediatorState.chooseParty;
+                _currentParty = 'partyA';
               });
-              _addAiMsg('Assalam o Alaikum! Naya session shuru hua.\n\nKya masla hai? Topic likhein.');
+              _addAiMsg('Assalam o Alaikum! Naya session shuru hua.\n\nPehle batayein:\n• Party A ka naam?\n• Party B ka naam?\n• Kya masla hai?\n\nFormat: "Ali, Ahmed, ghar ka kharcha"');
             },
-            child: const Text('Haan, Reset'),
+            child: const Text('Reset'),
           ),
         ],
       ),
@@ -206,28 +272,20 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
 
   String get _hintText {
     switch (_state) {
-      case _MediatorState.selectTopic: return 'Topic likhein...';
-      case _MediatorState.partyA:     return 'Party A: Apni baat likhein...';
-      case _MediatorState.partyAMore: return '"Nahi" ya aur kuch likhein...';
-      case _MediatorState.partyB:     return 'Party B: Apni baat likhein...';
-      case _MediatorState.partyBMore: return '"Nahi" ya aur kuch likhein...';
-      case _MediatorState.thinking:   return '"Haan" likhein decision ke liye...';
-      case _MediatorState.decision:   return 'Koi sawaal?';
+      case _MediatorState.chooseParty:  return 'Ali, Ahmed, property ka masla...';
+      case _MediatorState.partyA:       return '$_partyAName: Apni baat likhein...';
+      case _MediatorState.partyAMore:   return '"Nahi" ya aur baat likhein...';
+      case _MediatorState.partyB:       return '$_partyBName: Apni baat likhein...';
+      case _MediatorState.partyBMore:   return '"Nahi" ya aur baat likhein...';
+      case _MediatorState.thinking:     return '"Haan" likhein decision ke liye...';
+      case _MediatorState.decision:     return 'Koi sawaal?';
       default: return 'Likhein...';
     }
   }
 
-  Color get _partyColor {
-    switch (_state) {
-      case _MediatorState.partyA:
-      case _MediatorState.partyAMore:
-        return const Color(0xFF1D4ED8);
-      case _MediatorState.partyB:
-      case _MediatorState.partyBMore:
-        return const Color(0xFFD97706);
-      default:
-        return AppColors.primary;
-    }
+  Color get _sendColor {
+    if (_currentParty == 'partyB') return const Color(0xFFD97706);
+    return AppColors.primary;
   }
 
   @override
@@ -242,68 +300,88 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('AI Mediator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
-            Text(_topic.isEmpty ? 'Topic select karein' : _topic,
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
-                overflow: TextOverflow.ellipsis),
+            Text(_topic.isEmpty ? 'Topic aur naam daalen' : _topic,
+                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11), overflow: TextOverflow.ellipsis),
           ],
         ),
         actions: [
-          // Progress indicator
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-            child: _ProgressChip(state: _state),
-          ),
+          // Current party indicator
+          if (_state != _MediatorState.chooseParty)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _currentParty == 'partyB'
+                    ? const Color(0xFFD97706).withOpacity(0.3)
+                    : Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                _currentParty == 'partyB' ? _partyBName : _partyAName,
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: 'Reset',
             onPressed: _reset,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Party labels bar
-          if (_state != _MediatorState.selectTopic && _state != _MediatorState.decision)
+          // Party status bar
+          if (_state != _MediatorState.chooseParty && _state != _MediatorState.decision)
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  _PartyChip(label: 'Party A', color: const Color(0xFF1D4ED8),
-                      active: _state == _MediatorState.partyA || _state == _MediatorState.partyAMore),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.compare_arrows, size: 18, color: AppColors.textMuted),
-                  const SizedBox(width: 8),
-                  _PartyChip(label: 'Party B', color: const Color(0xFFD97706),
-                      active: _state == _MediatorState.partyB || _state == _MediatorState.partyBMore),
-                  const Spacer(),
-                  if (_state == _MediatorState.thinking)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('Decision ready', style: TextStyle(fontSize: 11, color: Color(0xFF166534))),
+                  _PartyBadge(
+                    name: _partyAName,
+                    color: AppColors.primary,
+                    active: _currentParty == 'partyA',
+                    done: _state.index >= _MediatorState.partyB.index,
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: _state.index >= _MediatorState.partyB.index
+                            ? AppColors.primary.withOpacity(0.3)
+                            : AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
+                  ),
+                  _PartyBadge(
+                    name: _partyBName,
+                    color: const Color(0xFFD97706),
+                    active: _currentParty == 'partyB',
+                    done: _state == _MediatorState.thinking || _state == _MediatorState.decision,
+                  ),
                 ],
               ),
             ),
 
-          // Chat messages
+          // Messages
           Expanded(
             child: ListView.builder(
               controller: _scrollCtrl,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               itemCount: _messages.length + (_loading ? 1 : 0),
               itemBuilder: (context, i) {
-                if (_loading && i == _messages.length) {
-                  return _TypingBubble();
-                }
-                final msg = _messages[i];
-                return _MediatorBubble(message: msg);
+                if (_loading && i == _messages.length) return _TypingBubble();
+                return _MediatorBubble(
+                  message:    _messages[i],
+                  partyAName: _partyAName,
+                  partyBName: _partyBName,
+                );
               },
             ),
           ),
 
-          // Input bar
+          // Input
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             color: Colors.white,
@@ -338,12 +416,13 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
                     child: Container(
                       width: 42, height: 42,
                       decoration: BoxDecoration(
-                        color: _loading ? AppColors.textMuted : _partyColor,
+                        color: _loading ? AppColors.textMuted : _sendColor,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6)],
+                        boxShadow: [BoxShadow(color: _sendColor.withOpacity(0.3), blurRadius: 6)],
                       ),
                       child: _loading
-                          ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? const Padding(padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
                     ),
                   ),
@@ -357,16 +436,45 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
   }
 }
 
-// ─── Message Bubble ───────────────────────────────────────
+class _PartyBadge extends StatelessWidget {
+  final String name;
+  final Color color;
+  final bool active, done;
+  const _PartyBadge({required this.name, required this.color, required this.active, required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 24, height: 24,
+          decoration: BoxDecoration(
+            color: done ? color : active ? color : color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: done
+              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              : Icon(Icons.person, size: 14, color: active ? Colors.white : color),
+        ),
+        const SizedBox(width: 5),
+        Text(name, style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w600,
+            color: active ? color : AppColors.textMuted)),
+      ],
+    );
+  }
+}
+
 class _MediatorBubble extends StatelessWidget {
   final _Message message;
-  const _MediatorBubble({required this.message});
+  final String partyAName, partyBName;
+  const _MediatorBubble({required this.message, required this.partyAName, required this.partyBName});
 
   @override
   Widget build(BuildContext context) {
     final isAi     = message.sender == 'ai';
     final isPartyA = message.sender == 'partyA';
-    final isPartyB = message.sender == 'partyB';
 
     Color bgColor;
     Color textColor;
@@ -379,15 +487,15 @@ class _MediatorBubble extends StatelessWidget {
       align     = Alignment.centerLeft;
       label     = '🤖 AI Mediator';
     } else if (isPartyA) {
-      bgColor   = const Color(0xFF1D4ED8);
+      bgColor   = AppColors.primary;
       textColor = Colors.white;
       align     = Alignment.centerRight;
-      label     = '👤 Party A';
+      label     = '👤 $partyAName';
     } else {
       bgColor   = const Color(0xFFFEF3C7);
       textColor = const Color(0xFF92400E);
       align     = Alignment.centerLeft;
-      label     = '👥 Party B';
+      label     = '👥 $partyBName';
     }
 
     return Align(
@@ -423,7 +531,6 @@ class _MediatorBubble extends StatelessWidget {
   }
 }
 
-// ─── Typing bubble ────────────────────────────────────────
 class _TypingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -442,69 +549,13 @@ class _TypingBubble extends StatelessWidget {
           children: [
             const Icon(Icons.psychology_rounded, size: 16, color: Color(0xFF166534)),
             const SizedBox(width: 8),
-            const Text('AI soch raha hai...', style: TextStyle(fontSize: 12, color: Color(0xFF166534))),
+            const Text('AI soch raha hai...', style: TextStyle(fontSize: 12, color: Color(0xFF166634))),
             const SizedBox(width: 8),
-            SizedBox(
-              width: 20, height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF166534).withOpacity(0.6)),
-            ),
+            SizedBox(width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF166634).withOpacity(0.6))),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─── Progress Chip ────────────────────────────────────────
-class _ProgressChip extends StatelessWidget {
-  final _MediatorState state;
-  const _ProgressChip({required this.state});
-
-  String get label {
-    switch (state) {
-      case _MediatorState.selectTopic: return 'Topic';
-      case _MediatorState.partyA:
-      case _MediatorState.partyAMore:  return 'Party A';
-      case _MediatorState.partyB:
-      case _MediatorState.partyBMore:  return 'Party B';
-      case _MediatorState.thinking:    return 'Ready';
-      case _MediatorState.decision:    return 'Done ✓';
-      default: return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.4)),
-      ),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// ─── Party Chip ───────────────────────────────────────────
-class _PartyChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool active;
-  const _PartyChip({required this.label, required this.color, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: active ? color : color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? Colors.white : color)),
     );
   }
 }
