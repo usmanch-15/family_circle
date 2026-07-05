@@ -20,31 +20,32 @@ class SuperAdminStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 32, height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 20),
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 17),
           ),
-          const SizedBox(height: 12),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textMuted)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: TextStyle(fontSize: 22,
+                      fontWeight: FontWeight.w700, color: color)),
+              Text(label,
+                  style: TextStyle(fontSize: 11,
+                      color: Colors.white.withOpacity(0.4))),
+            ],
+          ),
         ],
       ),
     );

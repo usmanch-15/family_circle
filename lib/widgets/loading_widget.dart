@@ -3,7 +3,6 @@ import '../utils/constants.dart';
 
 class LoadingWidget extends StatelessWidget {
   final String? message;
-
   const LoadingWidget({super.key, this.message});
 
   @override

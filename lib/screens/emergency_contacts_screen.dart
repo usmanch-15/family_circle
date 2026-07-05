@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-;
+
 import '../utils/constants.dart';
 import '../widgets/loading_widget.dart';
 
@@ -84,10 +84,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     );
   }
 
-  Future<void> _call(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-  }
+  // Future<void> _call(String phone) async {
+  //   final uri = Uri.parse('tel:$phone');
+  //   if (await canLaunchUrl(uri)) await launchUrl(uri);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -155,10 +155,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.call, color: AppColors.success),
-                      onPressed: () => _call(data['phone']),
-                    ),
+                    // IconButton(
+                    //   icon: const Icon(Icons.call, color: AppColors.success),
+                    //   onPressed: () => _call(data['phone']),
+                    // ),
                   ],
                 ),
               );

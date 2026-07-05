@@ -23,25 +23,37 @@ class MemberCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.cardBg,
-            backgroundImage:
-            member.photoUrl != null ? NetworkImage(member.photoUrl!) : null,
-            child: member.photoUrl == null
-                ? Text(
-              Helpers.getInitials(member.name),
-              style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600),
-            )
-                : null,
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.cardBg,
+                backgroundImage: member.photoUrl != null
+                    ? NetworkImage(member.photoUrl!) : null,
+                child: member.photoUrl == null
+                    ? Text(Helpers.getInitials(member.name),
+                    style: const TextStyle(
+                        color: AppColors.primary, fontWeight: FontWeight.w600))
+                    : null,
+              ),
+              if (isOnline)
+                Positioned(
+                  right: 0, bottom: 0,
+                  child: Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      color: AppColors.success, shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -51,45 +63,32 @@ class MemberCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(member.name,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
+                        style: const TextStyle(fontSize: 14,
+                            fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     if (member.isAdmin) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.cardBg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                            color: AppColors.cardBg,
+                            borderRadius: BorderRadius.circular(20)),
                         child: const Text('Admin',
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontSize: 10,
+                                color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(member.email,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted)),
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
           ),
-          if (isOnline)
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                  color: AppColors.success, shape: BoxShape.circle),
-            ),
           if (showAdminControls && !member.isAdmin)
             IconButton(
-              icon: const Icon(Icons.close, color: AppColors.error, size: 20),
+              icon: const Icon(Icons.person_remove_outlined,
+                  color: AppColors.error, size: 20),
               onPressed: onRemove,
             ),
         ],

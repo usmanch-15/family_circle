@@ -23,25 +23,19 @@ class ThreeDotMenu extends StatelessWidget {
       itemBuilder: (context) => [
         const PopupMenuItem(
           value: 'new_family',
-          child: Row(
-            children: [
-              Icon(Icons.group_add_outlined,
-                  size: 18, color: AppColors.textPrimary),
-              SizedBox(width: 10),
-              Text('New family'),
-            ],
-          ),
+          child: Row(children: [
+            Icon(Icons.group_add_outlined, size: 18, color: AppColors.textPrimary),
+            SizedBox(width: 10),
+            Text('New family'),
+          ]),
         ),
         const PopupMenuItem(
           value: 'settings',
-          child: Row(
-            children: [
-              Icon(Icons.settings_outlined,
-                  size: 18, color: AppColors.textPrimary),
-              SizedBox(width: 10),
-              Text('Settings'),
-            ],
-          ),
+          child: Row(children: [
+            Icon(Icons.settings_outlined, size: 18, color: AppColors.textPrimary),
+            SizedBox(width: 10),
+            Text('Settings'),
+          ]),
         ),
       ],
     );

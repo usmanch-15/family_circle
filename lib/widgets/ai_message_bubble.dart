@@ -9,26 +9,19 @@ class AiMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAi = message.sender == MessageSender.ai;
+    final isAi     = message.sender == MessageSender.ai;
     final isPartyA = message.sender == MessageSender.partyA;
 
     final bgColor = isAi
         ? const Color(0xFFF0FDF4)
-        : isPartyA
-        ? AppColors.primary
-        : AppColors.surface;
+        : isPartyA ? AppColors.primary : AppColors.surface;
 
     final textColor = isAi
         ? const Color(0xFF166534)
-        : isPartyA
-        ? Colors.white
-        : AppColors.textPrimary;
+        : isPartyA ? Colors.white : AppColors.textPrimary;
 
-    final label = isAi
-        ? 'AI Mediator'
-        : isPartyA
-        ? 'Party A'
-        : 'Party B';
+    final label = isAi ? 'AI Mediator'
+        : isPartyA ? 'Party A' : 'Party B';
 
     return Align(
       alignment: isPartyA ? Alignment.centerRight : Alignment.centerLeft,
@@ -40,18 +33,13 @@ class AiMessageBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
-          border: isAi
-              ? Border.all(color: const Color(0xFF86EFAC))
-              : !isPartyA
-              ? Border.all(color: AppColors.border)
-              : null,
+          border: isAi ? Border.all(color: const Color(0xFF86EFAC)) : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: TextStyle(
-                    fontSize: 10,
+                style: TextStyle(fontSize: 10,
                     color: textColor.withOpacity(0.7),
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 3),

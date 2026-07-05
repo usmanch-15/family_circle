@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
@@ -36,28 +37,26 @@ class ChatBubble extends StatelessWidget {
             bottomRight: Radius.circular(isMe ? 3 : 14),
           ),
           border: isMe ? null : Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06),
+                blurRadius: 4, offset: const Offset(0, 1)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isMe)
               Text(senderName,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary)),
+                  style: const TextStyle(fontSize: 11,
+                      fontWeight: FontWeight.w600, color: AppColors.primary)),
             if (!isMe) const SizedBox(height: 2),
             Text(message,
-                style: TextStyle(
-                    fontSize: 14,
+                style: TextStyle(fontSize: 14,
                     color: isMe ? Colors.white : AppColors.textPrimary)),
             const SizedBox(height: 3),
             Text(Helpers.formatTime(time),
-                style: TextStyle(
-                    fontSize: 10,
-                    color: isMe
-                        ? Colors.white.withOpacity(0.7)
-                        : AppColors.textMuted)),
+                style: TextStyle(fontSize: 10,
+                    color: isMe ? Colors.white.withOpacity(0.7) : AppColors.textMuted)),
           ],
         ),
       ),

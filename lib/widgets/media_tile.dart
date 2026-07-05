@@ -15,7 +15,7 @@ class MediaTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           color: AppColors.cardBg,
         ),
         clipBehavior: Clip.antiAlias,
@@ -35,8 +35,7 @@ class MediaTile extends StatelessWidget {
                 : media.type == MediaType.audio
                 ? Icons.audiotrack_rounded
                 : Icons.insert_drive_file_rounded,
-            size: 36,
-            color: AppColors.primary,
+            size: 36, color: AppColors.primary,
           ),
         ),
       ),

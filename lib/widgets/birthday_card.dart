@@ -4,7 +4,6 @@ import '../models/event_model.dart';
 
 class BirthdayCard extends StatelessWidget {
   final EventModel event;
-
   const BirthdayCard({super.key, required this.event});
 
   @override
@@ -15,8 +14,7 @@ class BirthdayCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-        ),
+            colors: [AppColors.primary, AppColors.primaryLight]),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -28,13 +26,12 @@ class BirthdayCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(event.title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
+                    style: const TextStyle(color: Colors.white,
+                        fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
                 Text(
-                  isToday ? 'Aaj hai! Mubarak ho 🎉' : '${event.daysUntil} din baqi hain',
+                  isToday ? 'Aaj hai! Mubarak ho 🎉'
+                      : '${event.daysUntil} din baqi hain',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.85), fontSize: 12),
                 ),

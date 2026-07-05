@@ -1,45 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
+import '../utils/helpers.dart';
+import '../providers/auth_provider.dart';
 import '../models/task_model.dart';
 import '../models/family_model.dart';
 import '../models/user_model.dart';
 import '../services/task_service.dart';
-import '../widgets/task_tile.dart';
 import '../widgets/loading_widget.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-class TaskScreen extends StatefulWidget {
+class TaskScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
-
   const TaskScreen({super.key, required this.family});
 
   @override
-  State<TaskScreen> createState() => _TaskScreenState();
+  ConsumerState<TaskScreen> createState() => _TaskScreenState();
 }
 
-class _TaskScreenState extends State<TaskScreen> {
-  final _service = TaskService();
-  final _titleCtrl = TextEditingController();
+class _TaskScreenState extends ConsumerState<TaskScreen> with SingleTickerProviderStateMixin {
+  final _service    = TaskService();
+  final _titleCtrl  = TextEditingController();
+  late TabController _tabCtrl;
   String? _selectedMemberUid;
   String? _selectedMemberName;
 
   @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+  }
+
+  @override
   void dispose() {
     _titleCtrl.dispose();
+    _tabCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _addTask() async {
     if (_titleCtrl.text.trim().isEmpty || _selectedMemberUid == null) return;
-
     await _service.addTask(
-      familyId: widget.family.id,
-      title: _titleCtrl.text.trim(),
-      assignedToUid: _selectedMemberUid!,
+      familyId:       widget.family.id,
+      title:          _titleCtrl.text.trim(),
+      assignedToUid:  _selectedMemberUid!,
       assignedToName: _selectedMemberName!,
     );
-
     _titleCtrl.clear();
+    _selectedMemberUid  = null;
+    _selectedMemberName = null;
     if (mounted) Navigator.pop(context);
   }
 
@@ -47,10 +56,9 @@ class _TaskScreenState extends State<TaskScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.only(
@@ -62,37 +70,42 @@ class _TaskScreenState extends State<TaskScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Naya Task',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               TextField(
                 controller: _titleCtrl,
-                decoration:
-                const InputDecoration(hintText: 'maslan: Bartan dhona'),
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'maslan: Bartan dhona, Bill pay karna',
+                  prefixIcon: Icon(Icons.task_outlined, color: AppColors.textMuted),
+                ),
               ),
               const SizedBox(height: 12),
+              const Text('Kise assign karein?',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
+                spacing: 8, runSpacing: 8,
                 children: members.map((m) {
-                  final selected = _selectedMemberUid == m.uid;
+                  final sel = _selectedMemberUid == m.uid;
                   return ChoiceChip(
                     label: Text(m.name),
-                    selected: selected,
+                    selected: sel,
                     onSelected: (_) => setSheetState(() {
-                      _selectedMemberUid = m.uid;
+                      _selectedMemberUid  = m.uid;
                       _selectedMemberName = m.name;
                     }),
                     selectedColor: AppColors.primary,
                     labelStyle: TextStyle(
-                        color: selected ? Colors.white : AppColors.textPrimary),
+                        color: sel ? Colors.white : AppColors.textPrimary,
+                        fontWeight: sel ? FontWeight.w600 : FontWeight.normal),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _addTask,
+                onPressed: _selectedMemberUid != null ? _addTask : null,
                 child: const Text('Assign Karein'),
               ),
             ],
@@ -107,11 +120,21 @@ class _TaskScreenState extends State<TaskScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.primary,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Tasks',
-            style: TextStyle(color: AppColors.textPrimary)),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        bottom: TabBar(
+          controller: _tabCtrl,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          tabs: const [
+            Tab(text: 'Baaki'),
+            Tab(text: 'Complete'),
+          ],
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -119,46 +142,36 @@ class _TaskScreenState extends State<TaskScreen> {
             .where('familyIds', arrayContains: widget.family.id)
             .snapshots(),
         builder: (context, memberSnap) {
-          if (!memberSnap.hasData) return const LoadingWidget();
-          final members = memberSnap.data!.docs
+          final members = memberSnap.hasData
+              ? memberSnap.data!.docs
               .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
-              .toList();
+              .toList()
+              : <UserModel>[];
 
           return StreamBuilder<List<TaskModel>>(
             stream: _service.tasksStream(widget.family.id),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const LoadingWidget();
-              final tasks = snapshot.data!;
+              final all      = snapshot.data!;
+              final pending  = all.where((t) => !t.isCompleted).toList();
+              final completed = all.where((t) => t.isCompleted).toList();
 
-              if (tasks.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Koi task nahi hai',
-                          style: TextStyle(color: AppColors.textMuted)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => _showAddSheet(members),
-                        child: const Text('Task Add Karein'),
-                      ),
-                    ],
+              return TabBarView(
+                controller: _tabCtrl,
+                children: [
+                  _TaskList(
+                    tasks: pending,
+                    service: _service,
+                    emptyMsg: 'Koi task baaki nahi!',
+                    emptyIcon: Icons.check_circle_outline,
                   ),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: tasks.length,
-                itemBuilder: (context, i) {
-                  final task = tasks[i];
-                  return TaskTile(
-                    task: task,
-                    onToggle: () =>
-                        _service.toggleComplete(task.id, task.isCompleted),
-                    onDelete: () => _service.deleteTask(task.id),
-                  );
-                },
+                  _TaskList(
+                    tasks: completed,
+                    service: _service,
+                    emptyMsg: 'Abhi koi task complete nahi hua',
+                    emptyIcon: Icons.pending_outlined,
+                  ),
+                ],
               );
             },
           );
@@ -172,8 +185,7 @@ class _TaskScreenState extends State<TaskScreen> {
         builder: (context, snap) {
           final members = snap.hasData
               ? snap.data!.docs
-              .map((d) =>
-              UserModel.fromMap(d.data() as Map<String, dynamic>))
+              .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
               .toList()
               : <UserModel>[];
           return FloatingActionButton(
@@ -183,6 +195,93 @@ class _TaskScreenState extends State<TaskScreen> {
           );
         },
       ),
+    );
+  }
+}class _TaskList extends StatelessWidget {
+  final List<TaskModel> tasks;
+  final TaskService service;
+  final String emptyMsg;
+  final IconData emptyIcon;
+
+  const _TaskList({
+    required this.tasks,
+    required this.service,
+    required this.emptyMsg,
+    required this.emptyIcon,
+  });  // ← YAHAN PAR BRACKET BAND KRO, KUCH AURA MA NAHI
+
+  @override
+  Widget build(BuildContext context) {
+    if (tasks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: AppColors.cardBg, shape: BoxShape.circle),
+              child: Icon(emptyIcon, size: 40, color: AppColors.primary),
+            ),
+            const SizedBox(height: 14),
+            Text(emptyMsg, style: const TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: tasks.length,
+      itemBuilder: (context, i) {
+        final task = tasks[i];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: task.isCompleted ? AppColors.success.withOpacity(0.3) : AppColors.border),
+          ),
+          child: ListTile(
+            leading: GestureDetector(
+              onTap: () => service.toggleComplete(task.id, task.isCompleted),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 26, height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: task.isCompleted ? AppColors.success : Colors.transparent,
+                  border: Border.all(
+                      color: task.isCompleted ? AppColors.success : AppColors.border, width: 2),
+                ),
+                child: task.isCompleted
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
+              ),
+            ),
+            title: Text(
+              task.title,
+              style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600,
+                decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                color: task.isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Row(
+              children: [
+                const Icon(Icons.person_outline, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(task.assignedToName,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ],
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.close, size: 18, color: AppColors.error),
+              onPressed: () => service.deleteTask(task.id),
+            ),
+          ),
+        );
+      },
     );
   }
 }

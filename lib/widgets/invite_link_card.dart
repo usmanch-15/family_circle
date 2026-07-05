@@ -21,20 +21,18 @@ class InviteLinkCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Invite link',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, color: Color(0xFF166534))),
+              style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF166534))),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF86EFAC)),
             ),
             child: Text(link,
-                style: const TextStyle(
-                    fontSize: 12, fontFamily: 'monospace')),
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
           ),
           const SizedBox(height: 10),
           Row(
@@ -44,7 +42,8 @@ class InviteLinkCard extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: link));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Link copy ho gaya')),
+                      const SnackBar(content: Text('Link copy ho gaya'),
+                          behavior: SnackBarBehavior.floating),
                     );
                   },
                   icon: const Icon(Icons.copy, size: 16),
