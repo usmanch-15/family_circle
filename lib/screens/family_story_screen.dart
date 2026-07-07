@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/constants.dart';
@@ -15,7 +16,7 @@ class FamilyStoryScreen extends StatefulWidget {
 }
 
 class _FamilyStoryScreenState extends State<FamilyStoryScreen> {
-  bool    _loading  = false;
+  bool    _loading = false;
   String? _story;
   String? _error;
 
@@ -23,10 +24,8 @@ class _FamilyStoryScreenState extends State<FamilyStoryScreen> {
     setState(() { _loading = true; _story = null; _error = null; });
 
     try {
-      // Data collect karo
       final year = DateTime.now().year;
 
-      // Events
       final eventsSnap = await FirebaseFirestore.instance
           .collection('events')
           .where('familyId', isEqualTo: widget.familyId)
@@ -35,7 +34,6 @@ class _FamilyStoryScreenState extends State<FamilyStoryScreen> {
           Timestamp.fromDate(DateTime(year, 1, 1)))
           .get();
 
-      // Messages count
       final msgsSnap = await FirebaseFirestore.instance
           .collection(Collections.families)
           .doc(widget.familyId)
@@ -45,7 +43,6 @@ class _FamilyStoryScreenState extends State<FamilyStoryScreen> {
           Timestamp.fromDate(DateTime(year, 1, 1)))
           .get();
 
-      // Media count
       final mediaSnap = await FirebaseFirestore.instance
           .collection(Collections.media)
           .where('familyId', isEqualTo: widget.familyId)
@@ -54,7 +51,6 @@ class _FamilyStoryScreenState extends State<FamilyStoryScreen> {
           Timestamp.fromDate(DateTime(year, 1, 1)))
           .get();
 
-      // Events list
       final eventsList = eventsSnap.docs.map((d) {
         final data = d.data();
         return '- ${data['title']} (${data['type']})';
@@ -67,27 +63,29 @@ Family: ${widget.familyName}
 Saal: $year
 
 Is saal ki activities:
-Events: ${eventsSnap.docs.length}
+Events (${eventsSnap.docs.length}):
 $eventsList
 
-Messages: ${msgsSnap.docs.length}
+Messages bheje: ${msgsSnap.docs.length}
 Photos/Videos share: ${mediaSnap.docs.length}
 
-Ek warm, emotional aur khubsoorat family story likho — jaise ek yearbook ka intro ho. 
+Ek warm, emotional aur khubsoorat family yearbook story likho.
 150-200 words. "Is saal ${widget.familyName} ki kahani:" se shuru karo.
-Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
 ''';
+
+      // dotenv se API key lo
+      final apiKey = dotenv.env['CLAUDE_API_KEY'] ?? '';
 
       final response = await http.post(
         Uri.parse(ApiConfig.claudeEndpoint),
         headers: {
-          'Content-Type':    'application/json',
-          'x-api-key':       const String.fromEnvironment('CLAUDE_API_KEY'),
+          'Content-Type':      'application/json',
+          'x-api-key':         apiKey,
           'anthropic-version': '2023-06-01',
         },
         body: jsonEncode({
           'model':      ApiConfig.claudeModel,
-          'max_tokens': 500,
+          'max_tokens': 600,
           'messages': [
             {'role': 'user', 'content': prompt},
           ],
@@ -103,7 +101,8 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
             .join('');
         setState(() => _story = text);
       } else {
-        setState(() => _error = 'AI se jawab nahi mila. API key check karein.');
+        setState(() => _error =
+        'AI se jawab nahi mila (${response.statusCode}). .env mein CLAUDE_API_KEY check karein.');
       }
     } catch (e) {
       setState(() => _error = 'Error: $e');
@@ -122,39 +121,36 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Family Story of the Year 📖',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF6C3AE8), Color(0xFF8B5CF6)],
-                ),
+                    colors: [Color(0xFF6C3AE8), Color(0xFF8B5CF6)]),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
                   const Text('📖', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: 12),
-                  Text(
-                    '${widget.familyName} — $year',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700),
-                  ),
+                  Text('${widget.familyName} — $year',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   Text(
                     'AI aapke saal bhar ke events, photos aur baatein dekh ke ek khaas family story likhega',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withOpacity(0.85),
                         fontSize: 13,
                         height: 1.4),
                     textAlign: TextAlign.center,
@@ -165,25 +161,22 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
 
             const SizedBox(height: 24),
 
-            // Generate button
             if (_story == null && !_loading)
               ElevatedButton.icon(
                 onPressed: _generateStory,
                 icon: const Icon(Icons.auto_awesome),
-                label: Text(
-                  'AI se $year ki Family Story Generate Karein',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
+                label: Text('AI se $year ki Family Story Generate Karein',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
 
-            // Loading
-            if (_loading) ...[
+            if (_loading)
               const Center(
                 child: Column(
                   children: [
+                    SizedBox(height: 20),
                     CircularProgressIndicator(color: AppColors.primary),
                     SizedBox(height: 16),
                     Text('AI aapki family ki kahani likh raha hai...',
@@ -191,21 +184,19 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
                   ],
                 ),
               ),
-            ],
 
-            // Error
-            if (_error != null)
+            if (_error != null) ...[
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(12)),
                 child: Text(_error!,
                     style: const TextStyle(color: AppColors.error)),
               ),
+            ],
 
-            // Story
             if (_story != null) ...[
               Container(
                 padding: const EdgeInsets.all(20),
@@ -217,7 +208,7 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
                     BoxShadow(
                         color: Colors.black.withOpacity(0.05),
                         blurRadius: 10,
-                        offset: const Offset(0, 4)),
+                        offset: const Offset(0, 4))
                   ],
                 ),
                 child: Column(
@@ -228,23 +219,19 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
                         const Text('📖',
                             style: TextStyle(fontSize: 20)),
                         const SizedBox(width: 8),
-                        Text(
-                          '${widget.familyName} — $year',
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary),
-                        ),
+                        Text('${widget.familyName} — $year',
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary)),
                       ],
                     ),
                     const Divider(height: 20),
-                    Text(
-                      _story!,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          height: 1.7,
-                          color: AppColors.textPrimary),
-                    ),
+                    Text(_story!,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            height: 1.7,
+                            color: AppColors.textPrimary)),
                   ],
                 ),
               ),
@@ -254,8 +241,7 @@ Family ke har member ko appreciate karo, saal ki yaadon ko celebrate karo.
                 icon: const Icon(Icons.refresh),
                 label: const Text('Dobara generate karein'),
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
+                    minimumSize: const Size(double.infinity, 48)),
               ),
             ],
           ],

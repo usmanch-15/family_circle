@@ -26,7 +26,7 @@ dependencies:
   # AI - Claude API
   http: ^1.1.0
 
-  # Media (web pe limited kaam karta hai)
+  # Media
   cached_network_image: ^3.3.1
 
   # Sharing
@@ -40,6 +40,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   uuid: ^4.2.2
   intl: ^0.19.0
+  url_launcher: ^6.2.2
 
   cupertino_icons: ^1.0.2
 
