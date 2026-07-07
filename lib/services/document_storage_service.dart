@@ -41,7 +41,21 @@ class DocumentStorageService {
         .map((d) => {...d.data(), 'id': d.id})
         .toList());
   }
-
+// Seedha URL se document add karna (web ke liye)
+  Future<void> addDocumentByUrl({
+    required String familyId,
+    required String uploaderUid,
+    required String title,
+    required String url,
+  }) async {
+    await _firestore.collection(_collection).add({
+      'familyId':    familyId,
+      'uploaderUid': uploaderUid,
+      'title':       title,
+      'url':         url,
+      'uploadedAt':  Timestamp.now(),
+    });
+  }
   Future<void> deleteDocument(String docId, String fileUrl) async {
     try {
       await _storage.refFromURL(fileUrl).delete();

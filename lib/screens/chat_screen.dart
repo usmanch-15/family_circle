@@ -15,7 +15,12 @@ import 'calendar_screen.dart';
 import 'expense_screen.dart';
 import 'task_screen.dart';
 import 'media_screen.dart';
-
+import 'mood_checkin_screen.dart';
+import 'on_this_day_screen.dart';
+import 'family_story_screen.dart';
+import 'birthday_reminder_screen.dart';
+import 'family_news_feed_screen.dart';
+import 'document_screen.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
   const ChatScreen({super.key, required this.family});

@@ -8,13 +8,10 @@ final familyServiceProvider = Provider<FamilyService>((ref) {
   return FamilyService();
 });
 
-// User jin groups ka member hai unki poori list (real-time)
 final myGroupsStreamProvider =
 StreamProvider.family<List<FamilyModel>, List<String>>(
       (ref, familyIds) {
-    if (familyIds.isEmpty) {
-      return Stream.value([]);
-    }
+    if (familyIds.isEmpty) return Stream.value([]);
     return FirebaseFirestore.instance
         .collection(Collections.families)
         .where(FieldPath.documentId, whereIn: familyIds)
@@ -25,10 +22,8 @@ StreamProvider.family<List<FamilyModel>, List<String>>(
   },
 );
 
-// Abhi kis group ka chat khula hai
 final currentGroupIdProvider = StateProvider<String?>((ref) => null);
 
-// Ek specific group ka real-time data
 final singleGroupStreamProvider =
 StreamProvider.family<FamilyModel?, String>((ref, familyId) {
   return ref.read(familyServiceProvider).familyStream(familyId);

@@ -5,7 +5,6 @@ import '../utils/constants.dart';
 class BackupRestoreService {
   final _firestore = FirebaseFirestore.instance;
 
-  // Family ka pura data ek JSON mein export karna
   Future<String> exportFamilyData(String familyId) async {
     final familyDoc = await _firestore
         .collection(Collections.families)
@@ -23,19 +22,17 @@ class BackupRestoreService {
         .get();
 
     final backup = {
-      'family': familyDoc.data(),
-      'media': mediaSnap.docs.map((d) => d.data()).toList(),
-      'events': eventsSnap.docs.map((d) => d.data()).toList(),
+      'family':     familyDoc.data(),
+      'media':      mediaSnap.docs.map((d) => d.data()).toList(),
+      'events':     eventsSnap.docs.map((d) => d.data()).toList(),
       'exportedAt': DateTime.now().toIso8601String(),
     };
-
     return jsonEncode(backup);
   }
 
-  // Backup se data wapis restore karna
-  Future<void> restoreFromBackup(String jsonData, String familyId) async {
+  Future<void> restoreFromBackup(
+      String jsonData, String familyId) async {
     final backup = jsonDecode(jsonData) as Map<String, dynamic>;
-
     if (backup['events'] != null) {
       for (final event in backup['events']) {
         await _firestore.collection('events').add({
@@ -46,10 +43,9 @@ class BackupRestoreService {
     }
   }
 
-  // Automatic daily backup - timestamp save karna
   Future<void> markBackupComplete(String familyId) async {
     await _firestore.collection('backups').add({
-      'familyId': familyId,
+      'familyId':   familyId,
       'completedAt': Timestamp.now(),
     });
   }
@@ -61,8 +57,8 @@ class BackupRestoreService {
         .orderBy('completedAt', descending: true)
         .limit(1)
         .get();
-
     if (snap.docs.isEmpty) return null;
-    return (snap.docs.first.data()['completedAt'] as Timestamp).toDate();
+    return (snap.docs.first.data()['completedAt'] as Timestamp)
+        .toDate();
   }
 }

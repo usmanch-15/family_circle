@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 import '../models/media_model.dart';
@@ -19,16 +21,27 @@ class MediaViewerScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(media.uploaderName,
-                style: const TextStyle(color: Colors.white, fontSize: 14,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600)),
             Text(Helpers.timeAgo(media.uploadedAt),
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.6), fontSize: 11)),
           ],
         ),
         actions: [
+          // REAL share button
           IconButton(
             icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () {},
+            onPressed: () {
+              Share.share(
+                media.caption != null
+                    ? '${media.caption}\n\n${media.url}'
+                    : 'Family Circle se shared: ${media.url}',
+                subject: 'Family Circle Media',
+              );
+            },
           ),
         ],
       ),
@@ -59,6 +72,17 @@ class MediaViewerScreen extends StatelessWidget {
                   : 'Audio player Android mein available hoga',
               style: TextStyle(color: Colors.white.withOpacity(0.7)),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => Share.share(media.url),
+              icon: const Icon(Icons.share, size: 16),
+              label: const Text('Link Share Karein'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           ],
         ),
       ),
@@ -77,7 +101,8 @@ class MediaViewerScreen extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 14)),
                   Text(
                     '${Helpers.timeAgo(media.uploadedAt)} · ${Helpers.formatFileSize(media.sizeInBytes)}',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.5), fontSize: 12),
                   ),
                 ],
               ),

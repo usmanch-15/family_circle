@@ -6,7 +6,6 @@ import '../widgets/loading_widget.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
   final String familyId;
-
   const EmergencyContactsScreen({super.key, required this.familyId});
 
   @override
@@ -14,26 +13,43 @@ class EmergencyContactsScreen extends StatefulWidget {
       _EmergencyContactsScreenState();
 }
 
-class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
-  final _firestore = FirebaseFirestore.instance;
-  final _nameCtrl = TextEditingController();
+class _EmergencyContactsScreenState
+    extends State<EmergencyContactsScreen> {
+  final _nameCtrl  = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _typeCtrl = TextEditingController();
+  final _typeCtrl  = TextEditingController();
+
+  final List<Map<String, dynamic>> _types = [
+    {'label': 'Doctor',  'icon': Icons.medical_services_outlined, 'color': const Color(0xFF0891B2)},
+    {'label': 'Police',  'icon': Icons.local_police_outlined,     'color': const Color(0xFF1D4ED8)},
+    {'label': 'Lawyer',  'icon': Icons.gavel_outlined,            'color': const Color(0xFF7C3AED)},
+    {'label': 'Hospital','icon': Icons.local_hospital_outlined,   'color': const Color(0xFFEF4444)},
+    {'label': 'General', 'icon': Icons.phone_outlined,            'color': AppColors.primary},
+  ];
+
+  String _selectedType = 'General';
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _typeCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _addContact() async {
     if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) return;
-
-    await _firestore.collection('emergency_contacts').add({
-      'familyId': widget.familyId,
-      'name': _nameCtrl.text.trim(),
-      'phone': _phoneCtrl.text.trim(),
-      'type': _typeCtrl.text.trim().isEmpty ? 'General' : _typeCtrl.text.trim(),
+    await FirebaseFirestore.instance
+        .collection('emergency_contacts')
+        .add({
+      'familyId':  widget.familyId,
+      'name':      _nameCtrl.text.trim(),
+      'phone':     _phoneCtrl.text.trim(),
+      'type':      _selectedType,
       'createdAt': Timestamp.now(),
     });
-
     _nameCtrl.clear();
     _phoneCtrl.clear();
-    _typeCtrl.clear();
     if (mounted) Navigator.pop(context);
   }
 
@@ -41,44 +57,56 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          left: 20, right: 20, top: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Emergency Contact',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(hintText: 'Naam - maslan: Dr. Ahmed'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: 'Phone number'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _typeCtrl,
-              decoration:
-              const InputDecoration(hintText: 'Type - Doctor, Police, Lawyer'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: _addContact, child: const Text('Save Karein')),
-          ],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Emergency Contact Add Karein',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                    hintText: 'maslan: Dr. Ahmed Ali'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                    hintText: '0300-1234567'),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: _types.map((t) {
+                  final sel = _selectedType == t['label'];
+                  return ChoiceChip(
+                    label: Text(t['label'] as String),
+                    selected: sel,
+                    onSelected: (_) =>
+                        setSheet(() => _selectedType = t['label'] as String),
+                    selectedColor: (t['color'] as Color).withOpacity(0.15),
+                    labelStyle: TextStyle(
+                        color: sel ? t['color'] as Color : AppColors.textPrimary,
+                        fontWeight: sel ? FontWeight.w600 : FontWeight.normal),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: _addContact, child: const Text('Save Karein')),
+            ],
+          ),
         ),
       ),
     );
@@ -94,14 +122,14 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.primary,
         elevation: 0,
-        title: const Text('Emergency Contacts',
-            style: TextStyle(color: AppColors.textPrimary)),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Emergency Contacts 🚨',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
+        stream: FirebaseFirestore.instance
             .collection('emergency_contacts')
             .where('familyId', isEqualTo: widget.familyId)
             .snapshots(),
@@ -110,9 +138,28 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           final docs = snapshot.data!.docs;
 
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('Koi emergency contact nahi hai',
-                  style: TextStyle(color: AppColors.textMuted)),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                        color: AppColors.cardBg, shape: BoxShape.circle),
+                    child: const Icon(Icons.emergency_outlined,
+                        size: 44, color: AppColors.error),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('Koi emergency contact nahi',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _showAddSheet,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Contact Add Karein'),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -121,25 +168,26 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
             itemCount: docs.length,
             itemBuilder: (context, i) {
               final data = docs[i].data() as Map<String, dynamic>;
+              final typeData = _types.firstWhere(
+                      (t) => t['label'] == data['type'],
+                  orElse: () => _types.last);
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 46, height: 46,
                       decoration: BoxDecoration(
-                        color: AppColors.cardBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.emergency_outlined,
-                          color: AppColors.primary),
+                          color: (typeData['color'] as Color).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Icon(typeData['icon'] as IconData,
+                          color: typeData['color'] as Color, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -155,10 +203,16 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                         ],
                       ),
                     ),
-                    // IconButton(
-                    //   icon: const Icon(Icons.call, color: AppColors.success),
-                    //   onPressed: () => _call(data['phone']),
-                    // ),
+                    Container(
+                      decoration: BoxDecoration(
+                          color: AppColors.success.withOpacity(0.1),
+                          shape: BoxShape.circle),
+                      // child: IconButton(
+                      //   icon: const Icon(Icons.call_rounded,
+                      //       color: AppColors.success, size: 22),
+                      //   onPressed: () => _call(data['phone'] ?? ''),
+                      // ),
+                    ),
                   ],
                 ),
               );
