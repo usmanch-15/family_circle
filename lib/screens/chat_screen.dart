@@ -21,7 +21,10 @@ import 'family_story_screen.dart';
 import 'birthday_reminder_screen.dart';
 import 'family_news_feed_screen.dart';
 import 'document_screen.dart';
+// Existing imports ke baad add karo:
+import 'search_screen.dart';
 
+import 'event_planning_screen.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
   const ChatScreen({super.key, required this.family});
@@ -131,7 +134,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'feed':
         Navigator.push(context, MaterialPageRoute(
             builder: (_) => FamilyNewsFeedScreen(familyId: widget.family.id)));
+      case 'search':
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => SearchScreen(familyId: widget.family.id)));
+        break;
+
+        break;
+      case 'event_planning':
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => EventPlanningScreen(familyId: widget.family.id)));
+        break;
       //   break;
+
+
+
       // case 'documents':
       //   Navigator.push(context, MaterialPageRoute(
       //       builder: (_) => DocumentScreen(familyId: widget.family.id)));
@@ -249,6 +265,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _mi('calendar', Icons.calendar_today_outlined,       'Calendar'),
               _mi('expense',  Icons.receipt_long_outlined,         'Expenses'),
               _mi('tasks',    Icons.checklist_outlined,            'Tasks'),
+              _mi('search', Icons.search_outlined, 'Search 🔍'),
+
+              _mi('event_planning', Icons.celebration_outlined, 'Event Planning 🎉'),
               // New features
               const PopupMenuDivider(),
               _mi('birthdays',    Icons.cake_outlined,             'Birthdays 🎂'),
