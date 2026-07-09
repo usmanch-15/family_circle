@@ -21,10 +21,12 @@ import 'family_story_screen.dart';
 import 'birthday_reminder_screen.dart';
 import 'family_news_feed_screen.dart';
 import 'document_screen.dart';
-// Existing imports ke baad add karo:
 import 'search_screen.dart';
-
 import 'event_planning_screen.dart';
+import '../widgets/voice_record_button.dart';
+import '../widgets/voice_message_player.dart';
+import '../services/voice_recorder_service.dart';
+
 class ChatScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
   const ChatScreen({super.key, required this.family});
@@ -66,6 +68,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         senderPhotoUrl: user.photoUrl,
         text:           text,
       );
+    } finally {
+      setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _sendVoiceMessage(VoiceRecordResult result) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    setState(() => _sending = true);
+    try {
+      await _chatService.sendVoiceMessage(
+        familyId:       widget.family.id,
+        senderUid:      user.uid,
+        senderName:     user.name,
+        senderPhotoUrl: user.photoUrl,
+        audioFile:      result.file,
+        durationSeconds: result.durationSeconds,
+      );
+    } catch (e) {
+      _showSnack('Voice message bhejne mein masla hua');
     } finally {
       setState(() => _sending = false);
     }
@@ -134,24 +156,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'feed':
         Navigator.push(context, MaterialPageRoute(
             builder: (_) => FamilyNewsFeedScreen(familyId: widget.family.id)));
+        break;
       case 'search':
         Navigator.push(context, MaterialPageRoute(
             builder: (_) => SearchScreen(familyId: widget.family.id)));
-        break;
-
         break;
       case 'event_planning':
         Navigator.push(context, MaterialPageRoute(
             builder: (_) => EventPlanningScreen(familyId: widget.family.id)));
         break;
-      //   break;
-
-
-
       // case 'documents':
       //   Navigator.push(context, MaterialPageRoute(
       //       builder: (_) => DocumentScreen(familyId: widget.family.id)));
-        break;
+      //   break;
     }
   }
 
@@ -248,7 +265,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onPressed: () {
               if (widget.family.aiEnabled) {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const AiMediatorScreen()));
+                    MaterialPageRoute(builder: (_) => AiMediatorScreen(familyId: widget.family.id)));
               } else {
                 _showSnack('AI Mediator is group mein off hai');
               }
@@ -266,7 +283,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _mi('expense',  Icons.receipt_long_outlined,         'Expenses'),
               _mi('tasks',    Icons.checklist_outlined,            'Tasks'),
               _mi('search', Icons.search_outlined, 'Search 🔍'),
-
               _mi('event_planning', Icons.celebration_outlined, 'Event Planning 🎉'),
               // New features
               const PopupMenuDivider(),
@@ -317,6 +333,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               onAttach:   () => setState(() => _showAttach = !_showAttach),
               sending:    _sending,
               showAttach: _showAttach,
+              onVoiceRecorded: _sendVoiceMessage,
             ),
           ],
         ),
@@ -459,16 +476,40 @@ class _AttachItem extends StatelessWidget {
 }
 
 // ─── Input Bar ────────────────────────────────────────────
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSend, onAttach;
   final bool sending, showAttach;
+  final void Function(VoiceRecordResult result) onVoiceRecorded;
   const _InputBar({required this.controller, required this.onSend,
     required this.onAttach, required this.sending,
-    required this.showAttach});
+    required this.showAttach, required this.onVoiceRecorded});
+
+  @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  bool _recordingActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasText = widget.controller.text.trim().isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       color: Colors.white,
@@ -476,88 +517,105 @@ class _InputBar extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            GestureDetector(
-              onTap: onAttach,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  color: showAttach ? AppColors.primary : AppColors.cardBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  showAttach ? Icons.close : Icons.add,
-                  color: showAttach ? Colors.white : AppColors.primary,
-                  size: 20,
+            if (!_recordingActive) ...[
+              GestureDetector(
+                onTap: widget.onAttach,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: widget.showAttach ? AppColors.primary : AppColors.cardBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.showAttach ? Icons.close : Icons.add,
+                    color: widget.showAttach ? Colors.white : AppColors.primary,
+                    size: 20,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(maxHeight: 120),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: controller,
-                        maxLines: null,
-                        decoration: const InputDecoration(
-                          hintText: 'Message likhein...',
-                          hintStyle: TextStyle(
-                              color: AppColors.textMuted, fontSize: 14),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          border: InputBorder.none,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: widget.controller,
+                          maxLines: null,
+                          decoration: const InputDecoration(
+                            hintText: 'Message likhein...',
+                            hintStyle: TextStyle(
+                                color: AppColors.textMuted, fontSize: 14),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (_) => widget.onSend(),
                         ),
-                        onSubmitted: (_) => onSend(),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () => ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content:  Text('Camera: Android mein available'),
-                          behavior: SnackBarBehavior.floating,
-                        )),
-                        child: const Icon(Icons.camera_alt_outlined,
-                            color: AppColors.textMuted, size: 20),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content:  Text('Camera: Android mein available'),
+                            behavior: SnackBarBehavior.floating,
+                          )),
+                          child: const Icon(Icons.camera_alt_outlined,
+                              color: AppColors.textMuted, size: 20),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: sending ? null : onSend,
-              child: Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: sending ? AppColors.textMuted : AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2))
-                  ],
+              const SizedBox(width: 8),
+            ],
+            if (hasText)
+              GestureDetector(
+                onTap: widget.sending ? null : widget.onSend,
+                child: Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    color: widget.sending ? AppColors.textMuted : AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: widget.sending
+                      ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 18),
                 ),
-                child: sending
-                    ? const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.send_rounded,
-                    color: Colors.white, size: 18),
+              )
+            else if (_recordingActive)
+              Expanded(
+                child: VoiceRecordButton(
+                  onRecorded: widget.onVoiceRecorded,
+                  onRecordingStart: () => setState(() => _recordingActive = true),
+                  onRecordingEnd: () => setState(() => _recordingActive = false),
+                ),
+              )
+            else
+              VoiceRecordButton(
+                onRecorded: widget.onVoiceRecorded,
+                onRecordingStart: () => setState(() => _recordingActive = true),
+                onRecordingEnd: () => setState(() => _recordingActive = false),
               ),
-            ),
           ],
         ),
       ),
@@ -640,22 +698,12 @@ class _ChatBubble extends StatelessWidget {
                         child: Image.network(message.mediaUrl!,
                             width: 200, fit: BoxFit.cover),
                       ),
-                    if (message.type == ChatMessageType.voice)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.play_circle_fill,
-                              color: isMe
-                                  ? Colors.white
-                                  : AppColors.primary,
-                              size: 28),
-                          const SizedBox(width: 8),
-                          Text('${message.voiceDurationSeconds ?? 0}s',
-                              style: TextStyle(
-                                  color: isMe
-                                      ? Colors.white
-                                      : AppColors.textPrimary)),
-                        ],
+                    if (message.type == ChatMessageType.voice &&
+                        message.mediaUrl != null)
+                      VoiceMessagePlayer(
+                        audioUrl: message.mediaUrl!,
+                        durationSeconds: message.voiceDurationSeconds ?? 0,
+                        isMe: isMe,
                       ),
                     if (message.type == ChatMessageType.text)
                       Text(message.text ?? '',

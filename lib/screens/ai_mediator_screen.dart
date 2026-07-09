@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 import '../services/ai_service.dart';
+import '../services/mediation_service.dart';
 import '../providers/auth_provider.dart';
+import 'mediation_history_screen.dart';
 
 enum _MediatorState { chooseParty, partyA, partyAMore, partyB, partyBMore, thinking, decision }
 
@@ -15,7 +17,8 @@ class _Message {
 }
 
 class AiMediatorScreen extends ConsumerStatefulWidget {
-  const AiMediatorScreen({super.key});
+  final String familyId;
+  const AiMediatorScreen({super.key, required this.familyId});
 
   @override
   ConsumerState<AiMediatorScreen> createState() => _AiMediatorScreenState();
@@ -25,6 +28,7 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
   final _inputCtrl  = TextEditingController();
   final _scrollCtrl = ScrollController();
   final _aiService  = AiService();
+  final _mediationService = MediationService();
 
   _MediatorState _state = _MediatorState.chooseParty;
   final List<_Message> _messages = [];
@@ -33,6 +37,7 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
   String _partyBName = 'Party B';
   String _partyASide = '';
   String _partyBSide = '';
+  String _lastDecision = '';
   bool   _loading    = false;
   String _currentParty = 'partyA';
 
@@ -167,11 +172,24 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
         }
         break;
 
-    // ─── After decision ─────────────────────────────
+    // ─── After decision: real follow-up sawaal AI se ────
       case _MediatorState.decision:
-        _addMsg(text, 'partyA');
-        await Future.delayed(const Duration(milliseconds: 400));
-        _addAiMsg('Agar koi sawaal ho to pooch sakte hain. Naya masla ho to "Reset" button dabayein.');
+        _addMsg(text, _currentParty);
+        setState(() => _loading = true);
+        try {
+          final answer = await _aiService.askFollowUp(
+            topic:            _topic,
+            partyAStatement:  '$_partyAName ki baat: $_partyASide',
+            partyBStatement:  '$_partyBName ki baat: $_partyBSide',
+            previousDecision: _lastDecision,
+            question:         text,
+          );
+          setState(() => _loading = false);
+          _addAiMsg(answer);
+        } catch (e) {
+          setState(() => _loading = false);
+          _addAiMsg('$e');
+        }
         break;
 
       default: break;
@@ -233,8 +251,21 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
         partyAStatement: '$_partyAName ki baat: $_partyASide',
         partyBStatement: '$_partyBName ki baat: $_partyBSide',
       );
+      _lastDecision = decision;
       setState(() { _loading = false; _state = _MediatorState.decision; });
-      _addAiMsg('⚖️ AI ka Fair Faisla\nTopic: $_topic\n\n$decision\n\n─────────────────\nYeh faisla dono parties — $_partyAName aur $_partyBName — ki baatein sun kar diya gaya hai. AI ne kisi ka paksh nahi liya.');
+      _addAiMsg('⚖️ AI ka Fair Faisla\nTopic: $_topic\n\n$decision\n\n─────────────────\nYeh faisla dono parties — $_partyAName aur $_partyBName — ki baatein sun kar diya gaya hai. AI ne kisi ka paksh nahi liya.\n\n(Iske baare mein sawaal poochna ho to yahin likhein)');
+
+      final uid = ref.read(currentUserProvider)?.uid ?? '';
+      _mediationService.saveSession(
+        familyId:        widget.familyId,
+        topic:           _topic,
+        partyAName:      _partyAName,
+        partyBName:      _partyBName,
+        partyAStatement: _partyASide,
+        partyBStatement: _partyBSide,
+        decision:        decision,
+        createdByUid:    uid,
+      ).catchError((_) {});
     } catch (e) {
       setState(() => _loading = false);
       _addAiMsg('Maafi chahta hun, Claude API se rabta nahi ho saka. .env file mein CLAUDE_API_KEY check karein aur dobara "haan" likhein.');
@@ -321,6 +352,12 @@ class _AiMediatorScreenState extends ConsumerState<AiMediatorScreen> {
                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            tooltip: 'Purane faisle',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => MediationHistoryScreen(familyId: widget.familyId))),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _reset,
