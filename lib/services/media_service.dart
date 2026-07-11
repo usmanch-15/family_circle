@@ -1,11 +1,11 @@
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'cloudinary_service.dart';
 import '../models/media_model.dart';
 import '../utils/constants.dart';
 
 class MediaService {
-  final _storage   = FirebaseStorage.instance;
+  final _cloudinary = CloudinaryService();
   final _firestore = FirebaseFirestore.instance;
 
   Future<MediaModel> uploadMedia({
@@ -16,11 +16,18 @@ class MediaService {
     required MediaType type,
     String? caption,
   }) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-    final storageRef = _storage.ref().child('families/$familyId/media/$fileName');
+    final resourceType = switch (type) {
+      MediaType.photo => 'image',
+      MediaType.video => 'video',
+      MediaType.audio => 'video',
+      MediaType.file  => 'raw',
+    };
 
-    final uploadTask = await storageRef.putFile(file);
-    final url = await uploadTask.ref.getDownloadURL();
+    final url = await _cloudinary.uploadFile(
+      file: file,
+      folder: 'families/$familyId/media',
+      resourceType: resourceType,
+    );
     final sizeInBytes = await file.length();
 
     final docRef = _firestore.collection(Collections.media).doc();
@@ -65,9 +72,7 @@ class MediaService {
   }
 
   Future<void> deleteMedia(MediaModel media) async {
-    try {
-      await _storage.refFromURL(media.url).delete();
-    } catch (_) {}
+    // Cloudinary se unsigned delete possible nahi — sirf Firestore record hataya jata hai
     await _firestore.collection(Collections.media).doc(media.id).delete();
   }
 }

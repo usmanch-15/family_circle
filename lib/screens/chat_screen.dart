@@ -26,6 +26,8 @@ import 'event_planning_screen.dart';
 import '../widgets/voice_record_button.dart';
 import '../widgets/voice_message_player.dart';
 import '../services/voice_recorder_service.dart';
+import '../services/camera_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final FamilyModel family;
@@ -39,6 +41,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _msgCtrl     = TextEditingController();
   final _scrollCtrl  = ScrollController();
   final _chatService = ChatService();
+  final _cameraService = CameraService();
   final _searchCtrl  = TextEditingController();
   bool _sending      = false;
   bool _searching    = false;
@@ -90,6 +93,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _showSnack('Voice message bhejne mein masla hua');
     } finally {
       setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    setState(() => _showAttach = false);
+
+    final file = source == ImageSource.camera
+        ? await _cameraService.takePhoto()
+        : await _cameraService.pickPhotoFromGallery();
+    if (file == null) return;
+
+    setState(() => _sending = true);
+    try {
+      await _chatService.sendImageMessage(
+        familyId:       widget.family.id,
+        senderUid:      user.uid,
+        senderName:     user.name,
+        senderPhotoUrl: user.photoUrl,
+        imageFile:      file,
+      );
+    } catch (e) {
+      _showSnack('Photo bhejne mein masla hua: $e');
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -165,10 +194,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Navigator.push(context, MaterialPageRoute(
             builder: (_) => EventPlanningScreen(familyId: widget.family.id)));
         break;
-      // case 'documents':
-      //   Navigator.push(context, MaterialPageRoute(
-      //       builder: (_) => DocumentScreen(familyId: widget.family.id)));
-      //   break;
+      case 'documents':
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => DocumentScreen(familyId: widget.family.id)));
+        break;
     }
   }
 
@@ -318,8 +347,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               color: Colors.white,
               child: _showAttach
                   ? _AttachPanel(
-                onGallery:  () => _showSnack('Gallery: Android app mein available'),
-                onCamera:   () => _showSnack('Camera: Android app mein available'),
+                onGallery:  () => _pickAndSendImage(ImageSource.gallery),
+                onCamera:   () => _pickAndSendImage(ImageSource.camera),
                 onDocument: () => _openMenu('documents'),
                 onLocation: () => _showSnack('Location: Android app mein available'),
                 onAudio:    () => _showSnack('Audio: Android app mein available'),

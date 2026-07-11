@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'cloudinary_service.dart';
 import '../models/chat_model.dart';
 import '../utils/constants.dart';
 
 class ChatService {
   final _firestore = FirebaseFirestore.instance;
-  final _storage   = FirebaseStorage.instance;
+  final _cloudinary = CloudinaryService();
 
   // ─── Text message bhejna ──────────────────────────────
   Future<void> sendTextMessage({
@@ -44,13 +44,11 @@ class ChatService {
     String? senderPhotoUrl,
     required File imageFile,
   }) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final storageRef = _storage
-        .ref()
-        .child('families/$familyId/chat/$fileName');
-
-    final uploadTask = await storageRef.putFile(imageFile);
-    final url = await uploadTask.ref.getDownloadURL();
+    final url = await _cloudinary.uploadFile(
+      file: imageFile,
+      folder: 'families/$familyId/chat',
+      resourceType: 'image',
+    );
 
     final docRef = _firestore
         .collection(Collections.families)
@@ -81,13 +79,11 @@ class ChatService {
     required File audioFile,
     required int durationSeconds,
   }) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.m4a';
-    final storageRef = _storage
-        .ref()
-        .child('families/$familyId/chat/$fileName');
-
-    final uploadTask = await storageRef.putFile(audioFile);
-    final url = await uploadTask.ref.getDownloadURL();
+    final url = await _cloudinary.uploadFile(
+      file: audioFile,
+      folder: 'families/$familyId/chat',
+      resourceType: 'video', // Cloudinary audio ko isi type mein rakhta hai
+    );
 
     final docRef = _firestore
         .collection(Collections.families)

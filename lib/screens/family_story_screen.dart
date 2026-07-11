@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../utils/constants.dart';
 
 class FamilyStoryScreen extends StatefulWidget {
@@ -73,37 +71,23 @@ Ek warm, emotional aur khubsoorat family yearbook story likho.
 150-200 words. "Is saal ${widget.familyName} ki kahani:" se shuru karo.
 ''';
 
-      // dotenv se API key lo
-      final apiKey = dotenv.env['CLAUDE_API_KEY'] ?? '';
+      // API key ab client mein nahi hai - Cloud Function proxy call ho rahi hai
+      final callable = FirebaseFunctions.instance.httpsCallable('askClaude');
+      final result = await callable.call({
+        'prompt': prompt,
+        'maxTokens': 600,
+      });
+      final text = result.data['text'] as String?;
 
-      final response = await http.post(
-        Uri.parse(ApiConfig.claudeEndpoint),
-        headers: {
-          'Content-Type':      'application/json',
-          'x-api-key':         apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: jsonEncode({
-          'model':      ApiConfig.claudeModel,
-          'max_tokens': 600,
-          'messages': [
-            {'role': 'user', 'content': prompt},
-          ],
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data    = jsonDecode(response.body);
-        final content = data['content'] as List;
-        final text    = content
-            .where((c) => c['type'] == 'text')
-            .map((c) => c['text'] as String)
-            .join('');
+      if (text != null && text.trim().isNotEmpty) {
         setState(() => _story = text);
       } else {
-        setState(() => _error =
-        'AI se jawab nahi mila (${response.statusCode}). .env mein CLAUDE_API_KEY check karein.');
+        setState(() => _error = 'AI se jawab nahi mila. Dobara koshish karein.');
       }
+    } on FirebaseFunctionsException catch (e) {
+      setState(() => _error = e.code == 'unauthenticated'
+          ? 'Pehle login karein.'
+          : 'AI se connection nahi ho saka. Internet check karein.');
     } catch (e) {
       setState(() => _error = 'Error: $e');
     } finally {

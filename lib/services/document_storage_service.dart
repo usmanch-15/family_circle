@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'cloudinary_service.dart';
 
 class DocumentStorageService {
   final _firestore = FirebaseFirestore.instance;
-  final _storage   = FirebaseStorage.instance;
+  final _cloudinary = CloudinaryService();
   static const String _collection = 'documents';
 
   // Document upload karna - sirf admin access
@@ -14,13 +14,11 @@ class DocumentStorageService {
     required String title,
     required File file,
   }) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-    final storageRef = _storage
-        .ref()
-        .child('families/$familyId/documents/$fileName');
-
-    final uploadTask = await storageRef.putFile(file);
-    final url = await uploadTask.ref.getDownloadURL();
+    final url = await _cloudinary.uploadFile(
+      file: file,
+      folder: 'families/$familyId/documents',
+      resourceType: 'raw',
+    );
 
     await _firestore.collection(_collection).add({
       'familyId': familyId,
@@ -57,9 +55,7 @@ class DocumentStorageService {
     });
   }
   Future<void> deleteDocument(String docId, String fileUrl) async {
-    try {
-      await _storage.refFromURL(fileUrl).delete();
-    } catch (_) {}
+    // Cloudinary se unsigned delete possible nahi — sirf Firestore record hataya jata hai
     await _firestore.collection(_collection).doc(docId).delete();
   }
 }
